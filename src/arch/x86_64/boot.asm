@@ -30,10 +30,75 @@ start:
   call check_cpuid
   call check_long_mode
 
+  ; setup paging and enter long mode
+  call setup_page_tables
+  call enable_paging
+
   ; print 'OK' to the screen
   mov dword [0xb8000], 0x2f4b2f4f
   ; halt for now
   hlt
+
+; page functions
+;
+; these functions are needed to setup the page tables so we can enter long mode
+
+; setup_page_tables sets up all the page tables that we need to start our kernel
+; we set up a p4 table pointing at a p3 table pointing at a p2 table that is
+; mapped with 2MiB pages
+setup_page_tables:
+  ; map first p4 entry to p3 table
+  mov eax, p3_table
+  or eax, 0b11                  ; present + writable
+  mov [p4_table], eax
+
+  ; map first p3 entry to p2 table
+  mov eax, p2_table
+  or eax, 0b11                  ; present + writable
+  mov [p3_table], eax
+
+  ; map each p2 entry to a huge 2MiB page
+  mov ecx, 0                    ; counter variable
+
+.map_p2_table:
+  ; map ecx-th p2 entry to a huge page starting at address 2MiB*ecx
+  mov eax, 0x200000             ; 2MiB
+  mul ecx                       ; start address of ecx-th page
+  or eax, 0b10000011            ; present + writable + huge
+  mov [p2_table + ecx * 8], eax ; map ecx-th entry
+
+  inc ecx                       ; increase counter
+  cmp ecx, 512                  ; if counter == 512, we are done mapping
+  jne .map_p2_table             ; else map the next entry
+
+  ; done!
+  ret
+
+; enable_paging does the magic to tell the cpu to turn on paging and enter long
+; mode. we write the address of our p4 table to cr3, enable pae, set the long
+; mode bit in the efer register, and then actually enable paging.
+enable_paging:
+  ; load p4 to cr3 register (the cpu uses cr3 to access the p4 table)
+  mov eax, p4_table
+  mov cr3, eax
+
+  ; enable pae-flag in cr4 (Physical Address Extension)
+  mov eax, cr4
+  or eax, 1 << 5
+  mov cr4, eax
+
+  ; set the long mode bit in the EFER MSR (Model Specific Register)
+  mov ecx, 0xC0000080
+  rdmsr
+  or eax, 1 << 8
+  wrmsr
+
+  ; enable paging in the cr0 register
+  mov eax, cr0
+  or eax, 1 << 31
+  mov cr0, eax
+
+  ret
 
 ; check functions
 ;
@@ -121,8 +186,17 @@ error:
   mov byte  [0xb800a], al
   hlt
 
-; reserve some bytes for the stack
 section .bss
+; setup page tables
+align 4096
+p4_table:
+  resb 4096
+p3_table:
+  resb 4096
+p2_table:
+  resb 4096
+
+; reserve some bytes for the stack
 stack_bottom:
   resb 64
 stack_top:
