@@ -31,7 +31,7 @@ $(iso): $(kernel) $(grub_cfg)
 	@rm -r $(build_dir)/iso
 
 $(kernel): kernel $(rust_os) $(asm_obj) $(linker_script)
-	@ld -n -T $(linker_script) -o $(kernel) $(asm_obj) $(rust_os)
+	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(asm_obj) $(rust_os)
 
 kernel: export RUST_TARGET_PATH=$(shell pwd)
 kernel:
