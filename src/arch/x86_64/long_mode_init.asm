@@ -3,7 +3,9 @@
 ; this file is called once boot.asm gets us into long mode and enables 64-bit
 ; instructions. from here we will actually call our kernel.
 
-global long_mode_start
+global long_mode_start          ; declare this file provides long_mode_start
+
+extern rust_main                ; define rust_main as a function somewhere else
 
 section .text                   ; executable code goes in the .text section
 
@@ -19,6 +21,9 @@ long_mode_start:
   mov es, ax
   mov fs, ax
   mov gs, ax
+
+  ; call the kernel
+  call rust_main
 
   ; print 'OKAY' to the screen
   mov rax,  0x2f592f412f4b2f4f

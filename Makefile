@@ -18,6 +18,7 @@ all: $(kernel)
 
 clean:
 	@rm -r build
+	@xargo clean
 
 run: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso)
@@ -32,6 +33,7 @@ $(iso): $(kernel) $(grub_cfg)
 $(kernel): kernel $(rust_os) $(asm_obj) $(linker_script)
 	@ld -n -T $(linker_script) -o $(kernel) $(asm_obj) $(rust_os)
 
+kernel: export RUST_TARGET_PATH=$(shell pwd)
 kernel:
 	@xargo build --target $(target)
 
