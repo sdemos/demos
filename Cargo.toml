@@ -7,3 +7,4 @@ authors = ["Stephen Demos <stephen@demos.zone>"]
 crate-type = ["staticlib"]
 
 [dependencies]
+rlibc = "1.0"
