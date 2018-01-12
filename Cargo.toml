@@ -1,0 +1,9 @@
+[package]
+name = "demos"
+version = "0.1.0"
+authors = ["Stephen Demos <stephen@demos.zone>"]
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
