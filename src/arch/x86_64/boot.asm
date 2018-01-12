@@ -2,7 +2,8 @@
 ;
 ; the first of our code to be executed. the asm in this file performs a bunch of
 ; checks for features we need, sets up an initial stack, enters long mode, and
-; then calls our kernel.
+; then calls our kernel. the actual kernel call happens in 64-bit code, which is
+; in the `long_mode_init.asm` file.
 ;
 ; the code in this file has several possible error conditions, most of them
 ; relating to feature checks failing. currently, the possible errors and their
@@ -13,6 +14,26 @@
 ; 2 - check_long_mode failed, the cpu doesn't support long mode
 
 global start                    ; export the start label
+
+extern long_mode_start          ; 64-bit code for when we are in long mode
+
+; the .rodata section is for read-only data. we are using it to build a gdt
+; (global descriptor table) that we have to pass to the cpu for various
+; x86-is-backwards-compatible-to-the-dawn-of-time reasons.
+section .rodata
+; a gdt starts with a zero entry and contains an arbitrary number of segment
+; entries following it. our 64-bit gdt only needs one segment, a code segment.
+gdt64:
+  dq 0                          ; zero entry
+.code: equ $ - gdt64            ; calculate location of code segment
+  ; code segment. they have the descriptor type, present, executable, and 64-bit
+  ; bits set, which are 44, 47, 43, and 53 respectively.
+  dq (1<<43) | (1<<44) | (1<<47) | (1<<53)
+.pointer:
+  ; to load the gdt, we use the lgdt cpu instruction, which requires a special
+  ; pointer structure that includes the length and location of the gdt.
+  dw $ - gdt64 - 1
+  dq gdt64
 
 section .text                   ; executable code goes in the .text section
 
@@ -34,9 +55,13 @@ start:
   call setup_page_tables
   call enable_paging
 
-  ; print 'OK' to the screen
-  mov dword [0xb8000], 0x2f4b2f4f
-  ; halt for now
+  ; load the 64-bit gdt
+  lgdt [gdt64.pointer]
+
+  ; calls into our 64-bit code, and also reloads the code selector
+  jmp gdt64.code:long_mode_start
+
+  ; we hopefully won't return from that call...
   hlt
 
 ; page functions
