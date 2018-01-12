@@ -1,6 +1,8 @@
 build_dir ?= build
 
 arch ?= x86_64
+target ?= $(arch)-demos
+rust_os := target/$(target)/debug/libdemos.a
 kernel := build/kernel-$(arch).bin
 iso := build/demos-$(arch).iso
 
@@ -10,7 +12,7 @@ asm_src := $(wildcard src/arch/$(arch)/*.asm)
 asm_obj := $(patsubst src/arch/$(arch)/%.asm, \
 	build/arch/$(arch)/%.o, $(asm_src))
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso kernel
 
 all: $(kernel)
 
@@ -27,8 +29,11 @@ $(iso): $(kernel) $(grub_cfg)
 	@grub-mkrescue -o $(iso) $(build_dir)/iso 2> /dev/null
 	@rm -r $(build_dir)/iso
 
-$(kernel): $(asm_obj) $(linker_script)
-	@ld -n -T $(linker_script) -o $(kernel) $(asm_obj)
+$(kernel): kernel $(rust_os) $(asm_obj) $(linker_script)
+	@ld -n -T $(linker_script) -o $(kernel) $(asm_obj) $(rust_os)
+
+kernel:
+	@xargo build --target $(target)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
 	@mkdir -p $(shell dirname $@)
