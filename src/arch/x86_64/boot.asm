@@ -46,6 +46,9 @@ start:
   ; setup the stack
   mov esp, stack_top
 
+  ; move the multiboot info pointer into edi
+  mov edi, ebx
+
   ; call all the check functions
   call check_multiboot
   call check_cpuid
@@ -223,5 +226,5 @@ p2_table:
 
 ; reserve some bytes for the stack
 stack_bottom:
-  resb 64
+  resb 4096 * 4
 stack_top:
