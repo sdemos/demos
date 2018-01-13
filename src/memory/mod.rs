@@ -1,5 +1,9 @@
 //! memory is a memory management abstraction layer
 
+mod area_frame_allocator;
+
+pub use self::area_frame_allocator::*;
+
 pub const PAGE_SIZE: usize = 4096;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]

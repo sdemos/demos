@@ -13,6 +13,8 @@ mod memory;
 #[macro_use]
 mod vga;
 
+use memory::FrameAllocator;
+
 #[no_mangle]
 pub extern fn rust_main(multiboot_addr: usize) {
     vga::clear_screen();
@@ -53,6 +55,21 @@ pub extern fn rust_main(multiboot_addr: usize) {
     let multiboot_end = multiboot_start + (boot_info.total_size as usize);
     println!("multiboot_start: 0x{:08x}, multiboot_end: 0x{:08x}",
              multiboot_start, multiboot_end);
+
+    let mut frame_allocator = memory::AreaFrameAllocator::new(
+        kernel_start as usize, kernel_end as usize,
+        multiboot_start, multiboot_end,
+        memory_map_tag.memory_areas()
+    );
+
+    println!("{:?}", frame_allocator.allocate_frame());
+
+    for i in 0.. {
+        if let None = frame_allocator.allocate_frame() {
+            println!("allocated {} frames", i);
+            break;
+        }
+    }
 
     loop {}
 }
