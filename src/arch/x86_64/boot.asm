@@ -75,6 +75,11 @@ start:
 ; we set up a p4 table pointing at a p3 table pointing at a p2 table that is
 ; mapped with 2MiB pages
 setup_page_tables:
+  ; map the last entry of the p4 table to itself
+  mov eax, p4_table
+  or eax, 0b11                  ; present + writable
+  mov [p4_table + 511 * 8], eax
+
   ; map first p4 entry to p3 table
   mov eax, p3_table
   or eax, 0b11                  ; present + writable
