@@ -9,7 +9,7 @@ use self::paging::PhysicalAddress;
 
 pub const PAGE_SIZE: usize = 4096;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Frame {
     number: usize,
 }
@@ -23,6 +23,15 @@ impl Frame {
 
     fn start_address(&self) -> PhysicalAddress {
         self.number * PAGE_SIZE
+    }
+
+    /// clone
+    /// this is very importantly a private function. the only valid way to have
+    /// a frame is to get one from an allocator. we restrict this function to
+    /// only us so we can guarantee that if a frame is passed to us, it has not
+    /// yet been used.
+    fn clone(&self) -> Frame {
+        Frame { number: self.number }
     }
 }
 
