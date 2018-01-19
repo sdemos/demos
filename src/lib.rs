@@ -10,6 +10,7 @@ extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
 extern crate volatile;
+extern crate x86_64;
 
 #[macro_use]
 mod vga;
@@ -64,7 +65,34 @@ pub extern fn rust_main(multiboot_addr: usize) {
         memory_map_tag.memory_areas()
     );
 
+    enable_nxe_bit();
+    enable_write_protect_bit();
     loop {}
+}
+
+/// the EntryFlags::NO_EXECUTE bit is disabled by default on x86_64. this
+/// function uses the Extended Feature Enable Register (EFER) to set the NXE
+/// bit, which enables using the EntryFlags::NO_EXECUTE bit on page tables.
+fn enable_nxe_bit() {
+    use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
+
+    let nxe_bit = 1 << 11;
+    unsafe {
+        let efer = rdmsr(IA32_EFER);
+        wrmsr(IA32_EFER, efer | nxe_bit);
+    }
+}
+
+/// by default, the write protection bit is ignored when the cpu is in kernel
+/// mode. for security and bug safety, have the cpu respect the bit even in
+/// kernel mode by turning on write protection, by setting the WRITE_PROTECT bit
+/// in the CR0 register.
+fn enable_write_protect_bit() {
+    use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
+
+    unsafe {
+        cr0_write(cr0() | Cr0::WRITE_PROTECT);
+    }
 }
 
 #[lang = "eh_personality"]
