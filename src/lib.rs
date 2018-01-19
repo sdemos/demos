@@ -13,6 +13,8 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 extern crate multiboot2;
+#[macro_use]
+extern crate once;
 extern crate rlibc;
 extern crate spin;
 extern crate volatile;
@@ -38,54 +40,31 @@ static ALLOCATOR: BumpAllocator =
 pub extern fn rust_main(multiboot_addr: usize) {
     vga::clear_screen();
 
-    println!("Hello World!");
+    println!("Hello World{}", "!");
 
     // get some information about memory from the multiboot info structure
     let boot_info = unsafe { multiboot2::load(multiboot_addr) };
-    let memory_map_tag = boot_info.memory_map_tag()
-        .expect("memory map tag required");
 
-    println!("memory areas:");
-    for area in memory_map_tag.memory_areas() {
-        println!("    start: 0x{:08x}, length: 0x{:08x}",
-                 area.base_addr, area.length);
-    }
-
-    // get some info about the kernel elf sections
-    let elf_sections_tag = boot_info.elf_sections_tag()
-        .expect("elf-sections tag required");
-
-    println!("kernel sections:");
-    for section in elf_sections_tag.sections() {
-        println!("    addr: 0x{:08x}, size: 0x{:08x}, flags: 0x{:08x}",
-                 section.addr, section.size, section.flags);
-    }
-
-    // get the size of the kernel
-    let kernel_start = elf_sections_tag.sections().map(|s| s.addr)
-        .min().unwrap();
-    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size)
-        .max().unwrap();
-    println!("kernel_start: 0x{:08x}, kernel_end: 0x{:08x}",
-             kernel_start, kernel_end);
-
-    // get the size of the multiboot area
-    let multiboot_start = multiboot_addr;
-    let multiboot_end = multiboot_start + (boot_info.total_size as usize);
-    println!("multiboot_start: 0x{:08x}, multiboot_end: 0x{:08x}",
-             multiboot_start, multiboot_end);
-
-    let mut frame_allocator = memory::AreaFrameAllocator::new(
-        kernel_start as usize, kernel_end as usize,
-        multiboot_start, multiboot_end,
-        memory_map_tag.memory_areas()
-    );
-
+    // enable various cpu features needed for our memory management strategy
     enable_nxe_bit();
     enable_write_protect_bit();
-    memory::remap_the_kernel(&mut frame_allocator, boot_info);
-    frame_allocator.allocate_frame();
+
+    memory::init(boot_info);
+
+    use alloc::boxed::Box;
+    let mut heap_test = Box::new(100);
+    *heap_test -= 15;
+    let heap_test2 = Box::new("hello");
+    println!("{:?} {:?}", heap_test, heap_test2);
+
+    let mut vec_test = vec![1,2,3,4,5,6,7,8,9];
+    vec_test[3] = 100;
+    for i in &vec_test {
+        print!("{} ", i);
+    }
+
     println!("it didn't crash!");
+    println!("we can use the heap!");
 
     loop {}
 }
