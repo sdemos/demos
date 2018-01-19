@@ -1,6 +1,7 @@
 //! memory is a memory management abstraction layer
 
 mod area_frame_allocator;
+pub mod heap_allocator;
 mod paging;
 
 pub use self::area_frame_allocator::*;

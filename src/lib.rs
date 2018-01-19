@@ -1,9 +1,15 @@
+#![feature(alloc)]
+#![feature(allocator_api)]
+#![feature(const_atomic_usize_new)]
 #![feature(const_fn)]
+#![feature(global_allocator)]
 #![feature(lang_items)]
 #![feature(unique)]
 #![feature(unique_unchecked)]
 #![no_std]
 
+#[macro_use]
+extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 extern crate multiboot2;
@@ -17,6 +23,16 @@ mod vga;
 mod memory;
 
 use memory::FrameAllocator;
+use memory::heap_allocator::BumpAllocator;
+
+pub const HEAP_START: usize = 0o_000_001_000_000_0000;
+pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+
+/// because of rust-lang/rust#44113 the global allocator must be defined in the
+/// root module.
+#[global_allocator]
+static ALLOCATOR: BumpAllocator =
+    BumpAllocator::new(HEAP_START, HEAP_START + HEAP_SIZE);
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_addr: usize) {
