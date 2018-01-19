@@ -21,7 +21,13 @@ clean:
 	@xargo clean
 
 run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso)
+	@qemu-system-x86_64 -cdrom $(iso) -s
+
+debug: $(iso)
+	@qemu-system-x86_64 -cdrom $(iso) -s -S
+
+gdb:
+	@gdb $(kernel) -ex "target remote :1234"
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p $(build_dir)/iso/boot/grub
