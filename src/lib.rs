@@ -1,5 +1,5 @@
-#![feature(lang_items)]
 #![feature(const_fn)]
+#![feature(lang_items)]
 #![feature(unique)]
 #![feature(unique_unchecked)]
 #![no_std]
@@ -67,6 +67,10 @@ pub extern fn rust_main(multiboot_addr: usize) {
 
     enable_nxe_bit();
     enable_write_protect_bit();
+    memory::remap_the_kernel(&mut frame_allocator, boot_info);
+    frame_allocator.allocate_frame();
+    println!("it didn't crash!");
+
     loop {}
 }
 

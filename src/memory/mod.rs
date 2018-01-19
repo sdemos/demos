@@ -4,6 +4,7 @@ mod area_frame_allocator;
 mod paging;
 
 pub use self::area_frame_allocator::*;
+pub use self::paging::remap_the_kernel;
 
 use self::paging::PhysicalAddress;
 
