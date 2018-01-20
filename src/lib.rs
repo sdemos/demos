@@ -51,20 +51,7 @@ pub extern fn rust_main(multiboot_addr: usize) {
 
     memory::init(boot_info);
 
-    use alloc::boxed::Box;
-    let mut heap_test = Box::new(100);
-    *heap_test -= 15;
-    let heap_test2 = Box::new("hello");
-    println!("{:?} {:?}", heap_test, heap_test2);
-
-    let mut vec_test = vec![1,2,3,4,5,6,7,8,9];
-    vec_test[3] = 100;
-    for i in &vec_test {
-        print!("{} ", i);
-    }
-
     println!("it didn't crash!");
-    println!("we can use the heap!");
 
     loop {}
 }
