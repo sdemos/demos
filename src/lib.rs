@@ -42,6 +42,11 @@ pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 static ALLOCATOR: BumpAllocator =
     BumpAllocator::new(HEAP_START, HEAP_START + HEAP_SIZE);
 
+/// rust_main is the rust entrypoint of our kernel. it is the function called by
+/// the assembly that handles the initial boot. at this point, it is expected
+/// that we are in 64-bit (long) mode with paging enabled, and that the first
+/// argument is populated with the address of the multiboot information. this
+/// function then initialized all the functionality of the kernel.
 #[no_mangle]
 pub extern fn rust_main(multiboot_addr: usize) {
     vga::clear_screen();
@@ -91,10 +96,19 @@ fn enable_write_protect_bit() {
     }
 }
 
+/// eh_personality is a language-level function that rust expects to be
+/// provided. I'm not clear on the exact purpose of this function or when it
+/// gets called. I think it has something to do with llvm. right now it doesn't
+/// do anything, but it needs to exist so it can be linked against.
 #[lang = "eh_personality"]
 #[no_mangle]
 pub extern fn eh_personality() {}
 
+/// panic_fmt is a language-level function that rust expects to be provided. it
+/// is the function called when something `panic!`s. it is given the file the
+/// panic occured in, the line it occured on, and a message about what happened.
+/// we print that and then loop forever, since we are in an unrecoverable state
+/// but we would like to see what happened.
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub extern fn panic_fmt(

@@ -5,23 +5,34 @@ use core::ptr::Unique;
 use spin::Mutex;
 use volatile::Volatile;
 
+/// WRITER is a global, static reference to the VGA buffer, located at real
+/// address 0xb8000. right now, our memory initialization identity maps the vga
+/// buffer, so that address is also the virtual address it is available at. at
+/// some point in the near future, when we move to a kernel mapped in high
+/// memory, this will have to be fixed.
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     column_pos: 0,
     color_code: ColorCode::new(Color::LightGreen, Color::Black),
     buffer: unsafe { Unique::new_unchecked(0xb8000 as *mut _) },
 });
 
+/// println is essentially a copy of the println macro normally provided by the
+/// rust standard library, except this one uses our own print! macro, which
+/// prints to the vga buffer instead of standard out.
 macro_rules! println {
     ($fmt:expr) => (print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }
 
+/// print prints a formatted string to the vga buffer
 macro_rules! print {
     ($($arg:tt)*) => ({
         $crate::vga::print(format_args!($($arg)*));
     })
 }
 
+/// Color is a enum of all available colors when printing directly to the vga
+/// buffer.
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,10 +55,14 @@ pub enum Color {
     White      = 15,
 }
 
+/// ColorCode is a u8 that represents the foreground color and background color
+/// combined into one value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ColorCode(u8);
 
 impl ColorCode {
+    /// new takes a foreground color and a background color and combines them
+    /// into a color code for use with the vga buffer.
     const fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }

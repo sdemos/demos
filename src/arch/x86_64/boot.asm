@@ -69,7 +69,15 @@ start:
 
 ; page functions
 ;
-; these functions are needed to setup the page tables so we can enter long mode
+; these functions are needed to setup the page tables so we can enter long mode.
+; the page table is very limited - it consists of only 3 tables. we use this to
+; map 512 2MiB pages for use by our kernel before it actually boots up.
+;
+; normally there is one more level of tables. however, if you set the huge page
+; flag in the p2 table, it signals to the cpu that instead of those entries
+; pointing at p1 tables, they are pointing at 2MiB pages directly. the 2MiB
+; comes from 512 * 4096 bytes, which is the number of 4KiB pages a p1 table
+; would point at.
 
 ; setup_page_tables sets up all the page tables that we need to start our kernel
 ; we set up a p4 table pointing at a p3 table pointing at a p2 table that is
