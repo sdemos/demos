@@ -8,7 +8,7 @@ mod temporary_page;
 pub use self::entry::*;
 pub use self::mapper::Mapper;
 
-use core::ops::{Deref, DerefMut};
+use core::ops::{Add, Deref, DerefMut};
 use memory::{PAGE_SIZE, Frame, FrameAllocator};
 use multiboot2::BootInformation;
 use self::temporary_page::TemporaryPage;
@@ -227,6 +227,17 @@ impl Page {
     }
 }
 
+impl Add<usize> for Page {
+    type Output = Page;
+
+    fn add(self, rhs: usize) -> Page {
+        Page {
+            number: self.number + rhs,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PageIter {
     start: Page,
     end: Page,

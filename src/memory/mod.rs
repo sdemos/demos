@@ -3,6 +3,7 @@
 mod area_frame_allocator;
 pub mod heap_allocator;
 mod paging;
+mod stack_allocator;
 
 pub use self::area_frame_allocator::*;
 pub use self::paging::remap_the_kernel;
