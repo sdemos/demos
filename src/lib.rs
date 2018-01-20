@@ -49,7 +49,8 @@ pub extern fn rust_main(multiboot_addr: usize) {
     enable_nxe_bit();
     enable_write_protect_bit();
 
-    memory::init(boot_info);
+    // initialize memory
+    let mut memory_controller = memory::init(boot_info);
 
     println!("it didn't crash!");
 
