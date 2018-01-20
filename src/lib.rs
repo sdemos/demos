@@ -1,3 +1,4 @@
+#![feature(abi_x86_interrupt)]
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(const_atomic_usize_new)]
@@ -12,6 +13,9 @@
 extern crate alloc;
 #[macro_use]
 extern crate bitflags;
+extern crate bit_field;
+#[macro_use]
+extern crate lazy_static;
 extern crate multiboot2;
 #[macro_use]
 extern crate once;
@@ -22,6 +26,8 @@ extern crate x86_64;
 
 #[macro_use]
 mod vga;
+
+mod interrupts;
 mod memory;
 
 use memory::FrameAllocator;
@@ -51,6 +57,9 @@ pub extern fn rust_main(multiboot_addr: usize) {
 
     // initialize memory
     let mut memory_controller = memory::init(boot_info);
+
+    // initialize idt
+    interrupts::init(&mut memory_controller);
 
     println!("it didn't crash!");
 
