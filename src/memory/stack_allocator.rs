@@ -19,6 +19,7 @@ impl StackAllocator {
         frame_allocator: &mut A,
         size_in_pages: usize,
     ) -> Option<Stack>
+        where A: FrameAllocator
     {
         if size_in_pages == 0 {
             // it doesn't make any snese to allocate a zero-sized stack
