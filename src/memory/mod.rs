@@ -12,6 +12,8 @@ pub use self::stack_allocator::Stack;
 use multiboot2::BootInformation;
 use self::paging::{PhysicalAddress, Page};
 use {HEAP_START, HEAP_SIZE};
+use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
+use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -22,6 +24,10 @@ pub trait FrameAllocator {
 
 pub fn init(boot_info: &BootInformation) -> MemoryController {
     assert_has_not_been_called!("memory::init must only be called once");
+
+    // enable various cpu features needed for our memory management strategy
+    enable_nxe_bit();
+    enable_write_protect_bit();
 
     let memory_map_tag = boot_info.memory_map_tag()
         .expect("memory map tag required");
@@ -151,5 +157,26 @@ impl Iterator for FrameIter {
         } else {
             None
         }
+    }
+}
+
+/// the EntryFlags::NO_EXECUTE bit is disabled by default on x86_64. this
+/// function uses the Extended Feature Enable Register (EFER) to set the NXE
+/// bit, which enables using the EntryFlags::NO_EXECUTE bit on page tables.
+fn enable_nxe_bit() {
+    let nxe_bit = 1 << 11;
+    unsafe {
+        let efer = rdmsr(IA32_EFER);
+        wrmsr(IA32_EFER, efer | nxe_bit);
+    }
+}
+
+/// by default, the write protection bit is ignored when the cpu is in kernel
+/// mode. for security and bug safety, have the cpu respect the bit even in
+/// kernel mode by turning on write protection, by setting the WRITE_PROTECT bit
+/// in the CR0 register.
+fn enable_write_protect_bit() {
+    unsafe {
+        cr0_write(cr0() | Cr0::WRITE_PROTECT);
     }
 }

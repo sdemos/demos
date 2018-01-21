@@ -56,10 +56,6 @@ pub extern fn rust_main(multiboot_addr: usize) {
     // get some information about memory from the multiboot info structure
     let boot_info = unsafe { multiboot2::load(multiboot_addr) };
 
-    // enable various cpu features needed for our memory management strategy
-    enable_nxe_bit();
-    enable_write_protect_bit();
-
     // initialize memory
     let mut memory_controller = memory::init(boot_info);
 
@@ -69,31 +65,6 @@ pub extern fn rust_main(multiboot_addr: usize) {
     println!("it didn't crash!");
 
     loop {}
-}
-
-/// the EntryFlags::NO_EXECUTE bit is disabled by default on x86_64. this
-/// function uses the Extended Feature Enable Register (EFER) to set the NXE
-/// bit, which enables using the EntryFlags::NO_EXECUTE bit on page tables.
-fn enable_nxe_bit() {
-    use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
-
-    let nxe_bit = 1 << 11;
-    unsafe {
-        let efer = rdmsr(IA32_EFER);
-        wrmsr(IA32_EFER, efer | nxe_bit);
-    }
-}
-
-/// by default, the write protection bit is ignored when the cpu is in kernel
-/// mode. for security and bug safety, have the cpu respect the bit even in
-/// kernel mode by turning on write protection, by setting the WRITE_PROTECT bit
-/// in the CR0 register.
-fn enable_write_protect_bit() {
-    use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
-
-    unsafe {
-        cr0_write(cr0() | Cr0::WRITE_PROTECT);
-    }
 }
 
 /// eh_personality is a language-level function that rust expects to be
