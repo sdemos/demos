@@ -70,7 +70,7 @@ extern "x86-interrupt" fn breakpoint_handler(
     stack_frame: &mut ExceptionStackFrame,
 )
 {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    error!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -78,6 +78,6 @@ extern "x86-interrupt" fn double_fault_handler(
     _error_code: u64, // the error code for a double fault is always zero
 )
 {
-    println!("\nEXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+    error!("\nEXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
     loop {}
 }

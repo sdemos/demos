@@ -16,6 +16,8 @@ extern crate bitflags;
 extern crate bit_field;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 extern crate multiboot2;
 #[macro_use]
 extern crate once;
@@ -28,6 +30,7 @@ extern crate x86_64;
 mod macros;
 
 mod interrupts;
+mod klog;
 mod memory;
 mod vga;
 
@@ -52,7 +55,10 @@ static ALLOCATOR: BumpAllocator =
 pub extern fn rust_main(multiboot_addr: usize) {
     vga::clear_screen();
 
-    println!("Hello World{}", "!");
+    // initialize kernel logging
+    klog::init();
+
+    info!("Hello World{}", "!");
 
     // get some information about memory from the multiboot info structure
     let boot_info = unsafe { multiboot2::load(multiboot_addr) };
@@ -69,9 +75,9 @@ pub extern fn rust_main(multiboot_addr: usize) {
     let mut heap_test = Box::new(100);
     *heap_test -= 15;
     let heap_test2 = Box::new("hello");
-    println!("{:?} {:?}", heap_test, heap_test2);
+    debug!("{:?} {:?}", heap_test, heap_test2);
 
-    println!("it didn't crash!");
+    info!("it didn't crash!");
 
     loop {}
 }
@@ -96,7 +102,7 @@ pub extern fn panic_fmt(
     file: &'static str,
     line: u32,
 ) -> ! {
-    println!("\n\nPANIC in {} at line {}:", file, line);
-    println!("    {}", fmt);
+    error!("\n\nPANIC in {} at line {}:", file, line);
+    error!("    {}", fmt);
     loop {}
 }

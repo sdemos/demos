@@ -46,11 +46,11 @@ pub fn init(boot_info: &BootInformation) -> MemoryController {
         .map(|s| s.addr + s.size)
         .max()
         .unwrap();
-    println!("kernel_start: {:#08x}, kernel_end: {:#08x}",
+    info!("kernel_start: {:#08x}, kernel_end: {:#08x}",
              kernel_start, kernel_end);
 
     // get the size of the multiboot area
-    println!("multiboot_start: {:#08x}, multiboot_end: {:#08x}",
+    info!("multiboot_start: {:#08x}, multiboot_end: {:#08x}",
              boot_info.start_address(),
              boot_info.end_address());
 
