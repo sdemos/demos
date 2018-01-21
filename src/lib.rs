@@ -62,6 +62,14 @@ pub extern fn rust_main(multiboot_addr: usize) {
     // initialize idt
     interrupts::init(&mut memory_controller);
 
+    // do a couple things to make sure various things are still working while I
+    // modify the memory model
+    use alloc::boxed::Box;
+    let mut heap_test = Box::new(100);
+    *heap_test -= 15;
+    let heap_test2 = Box::new("hello");
+    println!("{:?} {:?}", heap_test, heap_test2);
+
     println!("it didn't crash!");
 
     loop {}
