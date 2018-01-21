@@ -25,10 +25,11 @@ extern crate volatile;
 extern crate x86_64;
 
 #[macro_use]
-mod vga;
+mod macros;
 
 mod interrupts;
 mod memory;
+mod vga;
 
 use memory::FrameAllocator;
 use memory::heap_allocator::BumpAllocator;

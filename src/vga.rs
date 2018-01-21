@@ -16,21 +16,6 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     buffer: unsafe { Unique::new_unchecked(0xb8000 as *mut _) },
 });
 
-/// println is essentially a copy of the println macro normally provided by the
-/// rust standard library, except this one uses our own print! macro, which
-/// prints to the vga buffer instead of standard out.
-macro_rules! println {
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
-}
-
-/// print prints a formatted string to the vga buffer
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        $crate::vga::print(format_args!($($arg)*));
-    })
-}
-
 /// Color is a enum of all available colors when printing directly to the vga
 /// buffer.
 #[allow(dead_code)]
