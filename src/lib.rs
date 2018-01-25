@@ -5,6 +5,7 @@
 #![feature(const_fn)]
 #![feature(global_allocator)]
 #![feature(lang_items)]
+#![feature(ptr_internals)]
 #![feature(unique)]
 #![feature(unique_unchecked)]
 #![no_std]
@@ -34,7 +35,6 @@ mod klog;
 mod memory;
 mod vga;
 
-use memory::FrameAllocator;
 use memory::heap_allocator::BumpAllocator;
 
 pub const HEAP_START: usize = 0o_000_001_000_000_0000;
