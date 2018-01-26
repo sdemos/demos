@@ -13,6 +13,7 @@ use memory::{PAGE_SIZE, Frame, FrameAllocator};
 use multiboot2::BootInformation;
 use self::temporary_page::TemporaryPage;
 
+/// ENTRY_COUNT defines the number of entries in every page table.
 const ENTRY_COUNT: usize = 512;
 
 pub type PhysicalAddress = usize;
@@ -184,32 +185,51 @@ impl InactivePageTable {
     }
 }
 
+/// Page represents a PAGE_SIZE chunk of virtual address space.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Page {
+    // the number stored by the page is derived from the virtual addresses
+    // contained within it. specifically, this number is the virtual address
+    // divided by PAGE_SIZE truncated, which removes the 12-bit offset into the
+    // page that is bits 0-11 of a virtual address. See the `start_address`
+    // function and it's inverse `containing_address` for more details on Page
+    // construction.
     number: usize,
 }
 
 impl Page {
+    /// p4_index returns the 9-bit index into the level 4 paging table. this
+    /// still works because even though the representation of the page number is
+    /// the virtual address / PAGE_SIZE, that just means (at the binary level)
+    /// that all the bits are shifted over by 12.
     fn p4_index(&self) -> usize {
         (self.number >> 27) & 0o777
     }
 
+    /// p3_index returns the 9-bit index into the level 3 paging table.
     fn p3_index(&self) -> usize {
         (self.number >> 18) & 0o777
     }
 
+    /// p2_index returns the 9-bit index into the level 2 paging table.
     fn p2_index(&self) -> usize {
         (self.number >> 9) & 0o777
     }
 
+    /// p1_index returns the 9-bit index into the level 1 paging table.
     fn p1_index(&self) -> usize {
         (self.number >> 0) & 0o777
     }
 
-    pub fn start_address(&self) -> usize {
+    /// start_address returns the virtual address of the start of the page.
+    pub fn start_address(&self) -> VirtualAddress {
         self.number * PAGE_SIZE
     }
 
+    /// containing_address takes a virtual address and returns the page in which
+    /// that address resides. it asserts that the provided virtual address is
+    /// sign-extended in the top 16 bits (48-63). it does no validation that the
+    /// page being returned is actually mapped in the current active page table.
     pub fn containing_address(addr: VirtualAddress) -> Page {
         assert!(addr < 0x0000_8000_0000_0000 ||
                 addr >= 0xffff_8000_0000_0000,
@@ -219,6 +239,7 @@ impl Page {
         }
     }
 
+    /// range_inclusive returns an iterator from the start Page to the end Page.
     pub fn range_inclusive(start: Page, end: Page) -> PageIter {
         PageIter {
             start: start,
@@ -237,6 +258,20 @@ impl Add<usize> for Page {
     }
 }
 
+/// PageIter is the iterator for pages. There is a potential problem with this,
+/// but I've yet to confirm it's actually a problem or think of any possible
+/// solutions. Basically, because of the sign-extension present in the high bits
+/// of a virtual address, and the way that the "page number" is constructed,
+/// which is what this iterates over, it is conceivable that one could construct
+/// an iterator starting at one valid page containing address
+/// 0x0000_7fff_ffff_ffff and ending at another valid page containing address
+/// 0xffff_8000_0000_0000. each page is okay on it's own, but none of the pages
+/// between those addresses exist, because the sign extension requires those to
+/// be invalid. the containing_address function properly asserts this fact, but
+/// the iterator might still manually create a page, since it gets the next page
+/// by simply adding one to the current page number. Anyway, I don't know if
+/// it's an actual problem or if I will literally ever run into a manifestation
+/// of it, but it seems like it would be possible to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PageIter {
     start: Page,
