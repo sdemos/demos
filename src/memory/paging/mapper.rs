@@ -6,6 +6,9 @@ use super::{VirtualAddress, PhysicalAddress, Page, ENTRY_COUNT};
 use super::entry::*;
 use super::table::{self, Table, Level4};
 
+/// Mapper represents a set of page tables able to map virtual addresses to
+/// physical ones. it provides the ability to translate virtual addresses, as
+/// well as map virtual addresses to physical addresses.
 pub struct Mapper {
     p4: Unique<Table<Level4>>,
 }
@@ -25,6 +28,8 @@ impl Mapper {
         unsafe { self.p4.as_mut() }
     }
 
+    /// translate takes a virtual address and traverses the active page tables
+    /// to translate it into it's mapped physical address.
     pub fn translate(&self, virtual_addr: VirtualAddress) ->
         Option<PhysicalAddress>
     {
@@ -33,6 +38,12 @@ impl Mapper {
             .map(|frame| frame.number * PAGE_SIZE + offset)
     }
 
+    /// translate_page translates a virtual Page to a physical Frame. there is a
+    /// cursory implementation of translating huge pages because our initial
+    /// page tables set up in memory use them, but for the most part it just
+    /// uses the table indexes in the Page number to traverse the page tables
+    /// and return the mapped physical frame. if at any point it doesn't find a
+    /// corresponding entry, it returns None.
     pub fn translate_page(&self, page: Page) -> Option<Frame> {
         let p3 = self.p4().next_table(page.p4_index());
 
@@ -73,6 +84,10 @@ impl Mapper {
             .or_else(huge_page)
     }
 
+    /// map_to takes a virtual Page and maps it to a physical Frame in our
+    /// hierarchy of page tables. along the way, it creates any page tables that
+    /// don't already exist. it makes sure the Present flag is set in the page
+    /// table entry. it contains an assertion that the page is currently unused.
     pub fn map_to<A>(
         &mut self,
         page: Page,
@@ -91,6 +106,8 @@ impl Mapper {
         p1[page.p1_index()].set(frame, flags | EntryFlags::PRESENT);
     }
 
+    /// map takes a virtual Page and maps it to the next available spot in
+    /// memory, as provided by the provided allocator.
     pub fn map<A>(&mut self, page: Page, flags: EntryFlags, allocator: &mut A)
         where A: FrameAllocator
     {
@@ -98,6 +115,8 @@ impl Mapper {
         self.map_to(page, frame, flags, allocator)
     }
 
+    /// identity_map takes a Frame and maps it's physical address to an
+    /// identical virtual address.
     pub fn identity_map<A>(
         &mut self,
         frame: Frame,
@@ -110,6 +129,14 @@ impl Mapper {
         self.map_to(page, frame, flags, allocator)
     }
 
+    /// unmap sets the entry defined by the provided virtual Page to be unused.
+    /// it asserts that it is currently mapped. it panics if it fails to get the
+    /// next table and doesn't currently support huge pages. once it sets the
+    /// entry as unused it flushes the tlb and deallocates the frame.
+    ///
+    /// currently it doesn't actually deallocate the frame, since our current
+    /// main memory allocator doesn't implement deallocation and instead just
+    /// leaks the memory.
     pub fn unmap<A>(&mut self, page: Page, _allocator: &mut A)
         where A: FrameAllocator
     {
