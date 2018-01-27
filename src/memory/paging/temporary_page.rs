@@ -1,5 +1,14 @@
-//! temporary page allows us to temporarily map virtual memory addresses to
-//! physical ones to reference it during page table creation
+//! temporary_page contains the structures for temporarily mapping frames in the
+//! page table. it is essentially a thin wrapper around normal page table
+//! mapping. I'm not entirely convinced that having this buys us anything, so
+//! far it has only caused me confusion when working with stuff. I think I would
+//! prefer to have a temporary mapping function that executes a closure with the
+//! frame mapped at a particular address, then unmaps it immediately. I'm not
+//! sure if that will actually provide all the functionality I need yet though,
+//! so we will see.
+//!
+//! until then I'm not going to bother really documenting anything in this
+//! module.
 
 use super::{Page, ActivePageTable, VirtualAddress};
 use super::table::{Table, Level1};
