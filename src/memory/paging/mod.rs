@@ -19,12 +19,21 @@ const ENTRY_COUNT: usize = 512;
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
 
-pub fn remap_the_kernel<A>(
+/// init initializes the paging that will actually be used by the kernel during
+/// normal runtime. the assembly code that runs on startup sets up an extremely
+/// simple set of page tables that point at huge pages (which we don't currently
+/// fully support) and isn't very fleshed out. we also rely on identity mapping
+/// for the initial kernel and stack execution, since it is the easiest way to
+/// boot up, but during normal execution I would like to have the kernel mapped
+/// in the higher half of memory.
+pub fn init<A>(
     allocator: &mut A,
-    boot_info: &BootInformation
+    boot_info: &BootInformation,
 ) -> ActivePageTable
     where A: FrameAllocator
 {
+    assert_has_not_been_called!("paging::init must only be called once");
+
     let mut temporary_page = TemporaryPage::new(Page{
         number: 0xdeadbeef,
     }, allocator);

@@ -59,8 +59,7 @@ pub fn init(boot_info: &BootInformation) -> MemoryController {
         memory_map_tag.memory_areas()
     );
 
-    let mut active_table =
-        paging::remap_the_kernel(&mut frame_allocator, boot_info);
+    let mut active_table = paging::init(&mut frame_allocator, boot_info);
 
     let heap_start_page = Page::containing_address(HEAP_START);
     let heap_end_page = Page::containing_address(HEAP_START + HEAP_SIZE-1);
