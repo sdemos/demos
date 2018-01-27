@@ -36,17 +36,15 @@ mod klog;
 mod memory;
 mod vga;
 
-use memory::heap_allocator::BumpAllocator;
 pub use constants::*;
 
-pub const HEAP_START: usize = 0o_000_001_000_000_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+use memory::heap_allocator::BumpAllocator;
 
 /// because of rust-lang/rust#44113 the global allocator must be defined in the
 /// root module.
 #[global_allocator]
 static ALLOCATOR: BumpAllocator =
-    BumpAllocator::new(HEAP_START, HEAP_START + HEAP_SIZE);
+    BumpAllocator::new(KERNEL_HEAP_OFFSET, KERNEL_HEAP_OFFSET + KERNEL_HEAP_SIZE);
 
 /// rust_main is the rust entrypoint of our kernel. it is the function called by
 /// the assembly that handles the initial boot. at this point, it is expected

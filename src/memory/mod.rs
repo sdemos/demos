@@ -10,7 +10,6 @@ pub use self::stack_allocator::Stack;
 
 use multiboot2::BootInformation;
 use self::paging::{PhysicalAddress, Page};
-use {HEAP_START, HEAP_SIZE};
 use x86_64::registers::control_regs::{cr0, cr0_write, Cr0};
 use x86_64::registers::msr::{IA32_EFER, rdmsr, wrmsr};
 
@@ -61,8 +60,8 @@ pub fn init(boot_info: &BootInformation) -> MemoryController {
 
     let mut active_table = paging::init(&mut frame_allocator, boot_info);
 
-    let heap_start_page = Page::containing_address(HEAP_START);
-    let heap_end_page = Page::containing_address(HEAP_START + HEAP_SIZE-1);
+    let heap_start_page = Page::containing_address(::KERNEL_HEAP_OFFSET);
+    let heap_end_page = Page::containing_address(::KERNEL_HEAP_OFFSET + ::KERNEL_HEAP_SIZE-1);
 
     for page in Page::range_inclusive(heap_start_page, heap_end_page) {
         active_table.map(page,
