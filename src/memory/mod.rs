@@ -6,7 +6,6 @@ mod paging;
 mod stack_allocator;
 
 pub use self::area_frame_allocator::*;
-pub use self::paging::remap_the_kernel;
 pub use self::stack_allocator::Stack;
 
 use multiboot2::BootInformation;
