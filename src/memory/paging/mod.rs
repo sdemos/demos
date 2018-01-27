@@ -105,12 +105,36 @@ impl DerefMut for ActivePageTable {
 }
 
 impl ActivePageTable {
+    /// new returns a new ActivePageTable struct. this function is unsafe and
+    /// not public because there should only ever be one ActivePageTable, since
+    /// it uses a special virtual memory address to reference itself.
     unsafe fn new() -> ActivePageTable {
         ActivePageTable {
             mapper: Mapper::new(),
         }
     }
 
+    /// with provides a mechanism for modifying the entries in page tables that
+    /// aren't the current active one. it takes a function to execute on a
+    /// Mapper struct. it then executes this function after overwriting the
+    /// recursive mapping in the in the active table to point at the inactive
+    /// table. it requires a temporary page so we can keep a reference to the
+    /// original p4 table, since the normal mechanism of modifying page tables
+    /// is being hijacked by the inactive table.
+    ///
+    /// the mechanism takes advantage of the recursive mapping used to modify
+    /// page tables. normally, in order to modify a page table in the current
+    /// active page table hierarchy, you use a virtual address that makes the
+    /// paging functionality look in the last entry of the top level page table.
+    /// this entry is mapped to itself. it then looks up the next table as if it
+    /// is looking in the level 3 page table. using this, we can refer to page
+    /// tables in level 1 by looping once, level 2 by looping twice, level 3 by
+    /// looping 3 times, and level 4 by looping four times.
+    ///
+    /// since with is not changing the active page table, almost all virtual
+    /// addresses are still the same. the only ones that aren't are the magic
+    /// ones we use to modify the page tables. this lets us modify inactive page
+    /// tables using the same mechanism we do to modify the active one.
     pub fn with<F>(
         &mut self,
         table: &mut InactivePageTable,
@@ -146,6 +170,22 @@ impl ActivePageTable {
         temporary_page.unmap(self);
     }
 
+    /// switch swaps the current active page table that the cpu uses to map
+    /// virtual addresses to physical ones. in the current x86_64 implementation
+    /// of the kernel, it writes the address of the beginning of the frame
+    /// containing the page table into the CR3 register. it returns the previous
+    /// page table as an InactivePageTable.
+    ///
+    /// this actually has an interesting implementation, because you will notice
+    /// that we never seem to update the active table struct, which seems like
+    /// it would break our mapping functions. that's because the pointer to the
+    /// active table is a virtual memory address that specifies our recursive
+    /// mapping, specifically 0xffffffff_fffff000. we recursively point at the
+    /// p4 table 4 times, and that allows us to modify the page table.
+    ///
+    /// this is the same mechanism used in the mapping and table creation
+    /// functions to modify existing page tables using virtual addresses. it's a
+    /// pretty clever approach!
     pub fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
         use x86_64::PhysicalAddress;
         use x86_64::registers::control_regs;
@@ -163,12 +203,22 @@ impl ActivePageTable {
     }
 }
 
+/// InactivePageTable keeps track of a set of page tables, starting with a level
+/// 4 page table. Inactive page tables refer directly to a frame instead of
+/// using Mapper because the Mapper struct takes advantage of the recursive
+/// mapping we set up for page tables to always point at the active table.
+/// unfortunately, that means that we can't modify the inactive page tables
+/// directly using the same mechanism we do otherwise. instead, we can use the
+/// ActivePageTable::with function to
 #[derive(Debug)]
 pub struct InactivePageTable {
     p4_frame: Frame,
 }
 
 impl InactivePageTable {
+    /// new returns a newly allocated InactivePageTable. the table is entirely
+    /// empty, with every entry set to zero, except the last one, which is the
+    /// recursive mapping.
     pub fn new(
         frame: Frame,
         active_table: &mut ActivePageTable,
