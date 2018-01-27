@@ -9,6 +9,7 @@ use super::table::{self, Table, Level4};
 /// Mapper represents a set of page tables able to map virtual addresses to
 /// physical ones. it provides the ability to translate virtual addresses, as
 /// well as map virtual addresses to physical addresses.
+#[derive(Debug)]
 pub struct Mapper {
     p4: Unique<Table<Level4>>,
 }

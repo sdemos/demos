@@ -85,6 +85,7 @@ pub fn remap_the_kernel<A>(
     active_table
 }
 
+#[derive(Debug)]
 pub struct ActivePageTable {
     mapper: Mapper,
 }
@@ -162,6 +163,7 @@ impl ActivePageTable {
     }
 }
 
+#[derive(Debug)]
 pub struct InactivePageTable {
     p4_frame: Frame,
 }
