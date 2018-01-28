@@ -41,7 +41,7 @@ pub fn init<A>(
     let mut active_table = unsafe { ActivePageTable::new() };
     let mut new_table = {
         let frame = allocator.allocate_frame().expect("no more frames");
-        InactivePageTable::new(frame, &mut active_table, &mut temporary_page)
+        InactivePageTable::new(frame, &mut active_table, allocator)
     };
 
     active_table.with(&mut new_table, &mut temporary_page, |mapper| {
@@ -228,19 +228,18 @@ impl InactivePageTable {
     /// new returns a newly allocated InactivePageTable. the table is entirely
     /// empty, with every entry set to zero, except the last one, which is the
     /// recursive mapping.
-    pub fn new(
+    pub fn new<A>(
         frame: Frame,
         active_table: &mut ActivePageTable,
-        temporary_page: &mut TemporaryPage,
-    ) -> InactivePageTable {
-        {
-            let table = temporary_page
-                .map_table_frame(frame.clone(), active_table);
+        allocator: &mut A
+    ) -> InactivePageTable
+        where A: FrameAllocator
+    {
+        active_table.temporary_table_map(frame.clone(), allocator, |table| {
             table.zero();
             table[511].set(frame.clone(),
                            EntryFlags::PRESENT | EntryFlags::WRITABLE);
-        }
-        temporary_page.unmap(active_table);
+        });
 
         InactivePageTable { p4_frame: frame }
     }
