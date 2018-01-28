@@ -145,7 +145,7 @@ impl Mapper {
         allocator: &mut A,
         f: F,
     )
-        where F: FnOnce(VirtualAddress),
+        where F: FnOnce(&mut A, VirtualAddress),
               A: FrameAllocator
     {
         // find the next available page in the temporary virtual memory space
@@ -158,7 +158,7 @@ impl Mapper {
 
         self.map_to(page, frame, EntryFlags::WRITABLE, allocator);
 
-        f(page.start_address());
+        f(allocator, page.start_address());
 
         self.unmap(page, allocator);
     }
@@ -178,14 +178,14 @@ impl Mapper {
         allocator: &mut A,
         f: F
     )
-        where F: FnOnce(&mut Table<Level1>),
+        where F: FnOnce(&mut A, &mut Table<Level1>),
               A: FrameAllocator
     {
-        self.temporary_map(frame, allocator, |addr| {
+        self.temporary_map(frame, allocator, |a, addr| {
             let t = unsafe {
                 &mut *(addr as *mut Table<Level1>)
             };
-            f(t)
+            f(a, t)
         })
     }
 

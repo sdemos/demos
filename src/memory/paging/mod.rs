@@ -44,7 +44,7 @@ pub fn init<A>(
         InactivePageTable::new(frame, &mut active_table, allocator)
     };
 
-    active_table.with(&mut new_table, &mut temporary_page, |mapper| {
+    active_table.with(&mut new_table, allocator, |allocator, mapper| {
         let elf_sections_tag = boot_info.elf_sections_tag()
             .expect("memory map tag required");
 
@@ -144,39 +144,36 @@ impl ActivePageTable {
     /// addresses are still the same. the only ones that aren't are the magic
     /// ones we use to modify the page tables. this lets us modify inactive page
     /// tables using the same mechanism we do to modify the active one.
-    pub fn with<F>(
+    pub fn with<A, F>(
         &mut self,
         table: &mut InactivePageTable,
-        temporary_page: &mut temporary_page::TemporaryPage,
+        allocator: &mut A,
         f: F,
     )
-        where F: FnOnce(&mut Mapper)
+        where F: FnOnce(&mut A, &mut Mapper),
+              A: FrameAllocator
     {
         use x86_64::instructions::tlb;
         use x86_64::registers::control_regs;
 
-        {
-            // backup the p4 frame
-            let backup = Frame::containing_address(control_regs::cr3().0 as usize);
+        // backup the current p4 frame
+        let backup = Frame::containing_address(control_regs::cr3().0 as usize);
 
-            // map temporary_page to current p4 table
-            let p4_table = temporary_page.map_table_frame(backup.clone(), self);
-
+        // temporarily map the p4 frame
+        self.temporary_table_map(backup.clone(), allocator, |a, p4_table| {
             // overwrite recursive mapping
-            self.p4_mut()[511].set(table.p4_frame.clone(),
-                                   EntryFlags::PRESENT | EntryFlags::WRITABLE);
+            p4_table[511].set(table.p4_frame.clone(),
+                              EntryFlags::PRESENT | EntryFlags::WRITABLE);
             tlb::flush_all();
 
             // execute f in the new context
-            f(self);
+            f(a, self);
 
-            // restore recursive mapping to original p4 table
+            // restore recursive mapping to the original p4 table
             p4_table[511].set(backup,
                               EntryFlags::PRESENT | EntryFlags::WRITABLE);
             tlb::flush_all();
-        }
-
-        temporary_page.unmap(self);
+        })
     }
 
     /// switch swaps the current active page table that the cpu uses to map
@@ -235,7 +232,7 @@ impl InactivePageTable {
     ) -> InactivePageTable
         where A: FrameAllocator
     {
-        active_table.temporary_table_map(frame.clone(), allocator, |table| {
+        active_table.temporary_table_map(frame.clone(), allocator, |_, table| {
             table.zero();
             table[511].set(frame.clone(),
                            EntryFlags::PRESENT | EntryFlags::WRITABLE);
