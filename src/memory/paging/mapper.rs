@@ -4,7 +4,7 @@ use core::ptr::Unique;
 use memory::{PAGE_SIZE, Frame, FrameAllocator};
 use super::{VirtualAddress, PhysicalAddress, Page, ENTRY_COUNT};
 use super::entry::*;
-use super::table::{self, Table, Level4};
+use super::table::{self, Table, Level4, Level1};
 
 /// Mapper represents a set of page tables able to map virtual addresses to
 /// physical ones. it provides the ability to translate virtual addresses, as
@@ -128,6 +128,65 @@ impl Mapper {
     {
         let page = Page::containing_address(frame.start_address());
         self.map_to(page, frame, flags, allocator)
+    }
+
+    /// temporary_map temporarily maps a page in the kernel's temporary virtual
+    /// memory range to the provided frame. the virtual address of the start of
+    /// the page is passed to the provided function when it is called, then
+    /// unmapped.
+    ///
+    /// this function is not particularly efficient, it is O(n) on the number
+    /// temporary maps currently happening. it's also definitely not thread safe
+    /// at all (not that that matters this instant, but in the future, I should
+    /// clean this up) TODO << fix those issues
+    pub fn temporary_map<A, F>(
+        &mut self,
+        frame: Frame,
+        allocator: &mut A,
+        f: F,
+    )
+        where F: FnOnce(VirtualAddress),
+              A: FrameAllocator
+    {
+        // find the next available page in the temporary virtual memory space
+        let mut page = Page::containing_address(::KERNEL_TEMP_OFFSET);
+        let end = Page::containing_address(::KERNEL_TEMP_OFFSET + ::PML4_SIZE - 1);
+        while self.translate_page(page).is_some() {
+            assert!(page < end, "ran out of temp page space? how??");
+            page = page + 1;
+        }
+
+        self.map_to(page, frame, EntryFlags::WRITABLE, allocator);
+
+        f(page.start_address());
+
+        self.unmap(page, allocator);
+    }
+
+    /// temporary_table_map temporarily maps a page in the kernel's temporary
+    /// virtual memory range to the provided frame. the page is passed to the
+    /// provided function when it is called as a page table, then unmapped.
+    ///
+    /// TODO: there is another issue that I didn't anticipate - because we now
+    /// need the allocator passed to us, callers can't use it in the closure.
+    /// this is particularly painful for the with function, which would use this
+    /// functionality. this function will only be useful once I fix that
+    /// problem, but for now I'm going to leave this half-implemented.
+    pub fn temporary_table_map<A, F>(
+        &mut self,
+        frame: Frame,
+        allocator: &mut A,
+        f: F
+    )
+        where F: FnOnce(&mut Table<Level1>),
+              A: FrameAllocator
+    {
+        self.temporary_map(frame, allocator, |addr| {
+            let t = unsafe {
+                &mut *(addr as *mut Table<Level1>)
+            };
+            f(t)
+        })
     }
 
     /// unmap sets the entry defined by the provided virtual Page to be unused.
