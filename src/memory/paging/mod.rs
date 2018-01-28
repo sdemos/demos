@@ -34,9 +34,10 @@ pub fn init<A>(
 {
     assert_has_not_been_called!("paging::init must only be called once");
 
-    let mut temporary_page = TemporaryPage::new(Page{
-        number: 0xdeadbeef,
-    }, allocator);
+    let mut temporary_page = TemporaryPage::new(
+        Page::containing_address(::KERNEL_TEMP_OFFSET),
+        allocator,
+    );
 
     let mut active_table = unsafe { ActivePageTable::new() };
     let mut new_table = {
