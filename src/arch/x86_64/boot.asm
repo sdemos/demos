@@ -79,38 +79,37 @@ start:
 ; comes from 512 * 4096 bytes, which is the number of 4KiB pages a p1 table
 ; would point at.
 
-; setup_page_tables sets up all the page tables that we need to start our kernel
-; we set up a p4 table pointing at a p3 table pointing at a p2 table that is
-; mapped with 2MiB pages
+; setup_page_tables sets up all the page tables that we need to start our
+; kernel. we set up a pml4 table with three entries - a recursive entry at 511,
+; a pdp at 0, and the same pdp at 510. the first pdp entry points at a pd fully
+; identity mapped to the first 1GiB of memory
 setup_page_tables:
-  ; map the last entry of the p4 table to itself
-  mov eax, p4_table
+  ; map the last pml4 entry to itself
+  mov eax, pml4
   or eax, 0b11                  ; present + writable
-  mov [p4_table + 511 * 8], eax
+  mov [pml4 + 511 * 8], eax
 
-  ; map first p4 entry to p3 table
-  mov eax, p3_table
+  ; map first pml4 entry to pdp
+  mov eax, pdp
   or eax, 0b11                  ; present + writable
-  mov [p4_table], eax
+  mov [pml4], eax
+  ; also map second to last pml4 entry to pdp
+  mov [pml4 + 510 * 8], eax
 
-  ; map first p3 entry to p2 table
-  mov eax, p2_table
+  ; map first four pdp entries to corresponding pd
+  mov eax, pd.one
   or eax, 0b11                  ; present + writable
-  mov [p3_table], eax
+  mov [pdp], eax
 
-  ; map each p2 entry to a huge 2MiB page
-  mov ecx, 0                    ; counter variable
-
-.map_p2_table:
-  ; map ecx-th p2 entry to a huge page starting at address 2MiB*ecx
-  mov eax, 0x200000             ; 2MiB
-  mul ecx                       ; start address of ecx-th page
-  or eax, 0b10000011            ; present + writable + huge
-  mov [p2_table + ecx * 8], eax ; map ecx-th entry
-
-  inc ecx                       ; increase counter
-  cmp ecx, 512                  ; if counter == 512, we are done mapping
-  jne .map_p2_table             ; else map the next entry
+  ; identity map each pd entry to a huge 2MiB page
+  mov ebx, 1 << 7 | 1 << 1 | 1  ; entry
+  mov ecx, 512                  ; loop counter
+  mov edi, pd                   ; destination
+.map_pd:
+  mov [edi], ebx                ; set the entry
+  add ebx, 0x200000             ; next entry points 2MiB farther
+  add edi, 8                    ; next entry is 8 bytes away
+  loop .map_pd
 
   ; done!
   ret
@@ -120,7 +119,7 @@ setup_page_tables:
 ; mode bit in the efer register, and then actually enable paging.
 enable_paging:
   ; load p4 to cr3 register (the cpu uses cr3 to access the p4 table)
-  mov eax, p4_table
+  mov eax, pml4
   mov cr3, eax
 
   ; enable pae-flag in cr4 (Physical Address Extension)
@@ -128,15 +127,16 @@ enable_paging:
   or eax, 1 << 5
   mov cr4, eax
 
-  ; set the long mode bit in the EFER MSR (Model Specific Register)
+  ; set the long mode bit and the nxe bit in the EFER MSR (Model Specific
+  ; Register)
   mov ecx, 0xC0000080
   rdmsr
-  or eax, 1 << 8
+  or eax, 1 << 11 | 1 << 8      ; nxe and long mode bit respectively
   wrmsr
 
-  ; enable paging in the cr0 register
+  ; enable paging, write protect, and protected mode in the cr0 register
   mov eax, cr0
-  or eax, 1 << 31
+  or eax, 1 << 31 | 1 << 16 | 1
   mov cr0, eax
 
   ret
@@ -230,11 +230,18 @@ error:
 section .bss
 ; setup page tables
 align 4096
-p4_table:
+pml4:
   resb 4096
-p3_table:
+pdp:
   resb 4096
-p2_table:
+pd:
+.one:
+  resb 4096
+.two:
+  resb 4096
+.three:
+  resb 4096
+.four:
   resb 4096
 
 ; reserve some bytes for the stack

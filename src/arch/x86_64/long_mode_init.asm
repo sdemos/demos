@@ -23,6 +23,8 @@ long_mode_start:
   mov gs, ax
 
   ; call the kernel
+  mov rax, rust_main
+  or rax, 0xffffff0000000000
   call rust_main
 
   ; print 'OKAY' to the screen
