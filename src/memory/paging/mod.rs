@@ -34,17 +34,21 @@ pub fn init<A>(
 {
     assert_has_not_been_called!("paging::init must only be called once");
 
+    // make a temporary page in the kernel's temporary memory space
     let mut temporary_page = TemporaryPage::new(
         Page::containing_address(::KERNEL_TEMP_OFFSET),
         allocator,
     );
 
+    // initialize what will be the single active page table reference
     let mut active_table = unsafe { ActivePageTable::new() };
+    // make a new table for our actual runtime mapping
     let mut new_table = {
         let frame = allocator.allocate_frame().expect("no more frames");
         InactivePageTable::new(frame, &mut active_table, &mut temporary_page)
     };
 
+    // setup the new table
     active_table.with(&mut new_table, &mut temporary_page, |mapper| {
         let elf_sections_tag = boot_info.elf_sections_tag()
             .expect("memory map tag required");
@@ -67,22 +71,29 @@ pub fn init<A>(
             let start_frame = Frame::containing_address(section.start_address());
             let end_frame = Frame::containing_address(section.end_address() - 1);
             for frame in Frame::range_inclusive(start_frame, end_frame) {
-                mapper.identity_map(frame, flags, allocator);
+                mapper.identity_map_offset(::KERNEL_OFFSET, frame, flags, allocator);
             }
         }
 
         // identity map the VGA text buffer
         let vga_buffer_frame = Frame::containing_address(0xb8000);
-        mapper.identity_map(vga_buffer_frame, EntryFlags::WRITABLE, allocator);
+        mapper.identity_map_offset(::KERNEL_OFFSET,
+                                   vga_buffer_frame,
+                                   EntryFlags::WRITABLE,
+                                   allocator);
 
         // identity map the multiboot info structure
         let multiboot_start = Frame::containing_address(boot_info.start_address());
         let multiboot_end = Frame::containing_address(boot_info.end_address() - 1);
         for frame in Frame::range_inclusive(multiboot_start, multiboot_end) {
-            mapper.identity_map(frame, EntryFlags::PRESENT, allocator);
+            mapper.identity_map_offset(::KERNEL_OFFSET,
+                                       frame,
+                                       EntryFlags::PRESENT,
+                                       allocator);
         }
     });
 
+    // switch to the new table
     let old_table = active_table.switch(new_table);
 
     // turn the old p4 page into a guard page for some basic stack overflow
