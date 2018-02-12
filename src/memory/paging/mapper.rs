@@ -130,6 +130,21 @@ impl Mapper {
         self.map_to(page, frame, flags, allocator)
     }
 
+    /// identity_map_offset takes a Frame and maps it's physical address to
+    /// corresponding virtual address at the given offset.
+    pub fn identity_map_offset<A>(
+        &mut self,
+        offset: VirtualAddress,
+        frame: Frame,
+        flags: EntryFlags,
+        allocator: &mut A,
+    )
+    where A: FrameAllocator
+    {
+        let page = Page::containing_address(offset + frame.start_address());
+        self.map_to(page, frame, flags, allocator)
+    }
+
     /// unmap sets the entry defined by the provided virtual Page to be unused.
     /// it asserts that it is currently mapped. it panics if it fails to get the
     /// next table and doesn't currently support huge pages. once it sets the
