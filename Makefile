@@ -1,48 +1,52 @@
-build_dir ?= build
+LIB_DIR ?= /usr/lib
+EFI_DIR ?= $(LIB_DIR)
+CARGO ?= CARGO_INCREMENTAL=0 cargo
 
-arch ?= x86_64
-target ?= $(arch)-demos
-rust_os := target/$(target)/debug/libdemos.a
-kernel := build/kernel-$(arch).bin
-iso := build/demos-$(arch).iso
+all: CARGO_FLAG := --release
+all: build/bootx64-release.efi
+.PHONY: all
 
-linker_script := src/arch/$(arch)/linker.ld
-grub_cfg := src/arch/$(arch)/grub.cfg
-asm_src := $(wildcard src/arch/$(arch)/*.asm)
-asm_obj := $(patsubst src/arch/$(arch)/%.asm, \
-	build/arch/$(arch)/%.o, $(asm_src))
+debug: CARGO_FLAG :=
+debug: build/bootx64-debug.efi build/bootx64-debug-symbols.efi
+.PHONY: debug
 
-.PHONY: all clean run iso kernel
+# run: CARGO_FLAG := --release
+run: CARGO_FLAG :=
+run: build/image.vmdk
+	vmplayer /home/demos/vmware/demos/demos.vmx
+.PHONY: run
 
-all: $(kernel)
+build/image.vmdk: build/image.img build/bootx64-debug.efi
+	@mkdir -p build/mnt
+	sudo mount -o loop,offset=1048576 $< build/mnt
+	sudo mkdir -p build/mnt/efi/boot
+	sudo cp $(word 2,$^) build/mnt/efi/boot/bootx64.efi
+	sudo umount build/mnt
+	qemu-img convert $< -O vmdk $@
+
+build/image.img:
+	@mkdir -p build
+	sudo ./scripts/make-image $@
+
+build/bootx64-%.efi: build/demos-uefi-%.so
+	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $< $@
+
+build/bootx64-%-symbols.efi: build/demos-uefi-%.so
+	objcopy --target=efi-app-x86_64 $< $@
+
+# Because cargo doesn't remove old build artifacts from deps/ when building, if
+# source files or dependencies are removed, they will still be linked into the
+# final application unless they are cleaned up with the `clean` target or
+# `cargo clean`.
+build/demos-uefi-%.so: target/%/deps/demos-uefi.o
+	@mkdir -p build
+	ld target/$(*F)/deps/*.o $(EFI_DIR)/crt0-efi-x86_64.o -nostdlib -znocombreloc -T $(EFI_DIR)/elf_x86_64_efi.lds -shared -Bsymbolic -lefi -L $(LIB_DIR) -pie -e efi_entry -N -o $@
+
+target/%/deps/demos-uefi.o: src/lib.rs Cargo.toml
+	$(CARGO) build $(CARGO_FLAG)
+.PRECIOUS: target/%/deps/demos-uefi.o
 
 clean:
-	@rm -r build
-	@xargo clean
-
-run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso) -s
-
-debug: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso) -s -S
-
-gdb:
-	@gdb $(kernel) -ex "target remote :1234"
-
-$(iso): $(kernel) $(grub_cfg)
-	@mkdir -p $(build_dir)/iso/boot/grub
-	@cp $(kernel) $(build_dir)/iso/boot/kernel.bin
-	@cp $(grub_cfg) $(build_dir)/iso/boot/grub
-	@grub-mkrescue -o $(iso) $(build_dir)/iso 2> /dev/null
-	@rm -r $(build_dir)/iso
-
-$(kernel): kernel $(rust_os) $(asm_obj) $(linker_script)
-	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(asm_obj) $(rust_os)
-
-kernel: export RUST_TARGET_PATH=$(shell pwd)
-kernel:
-	@xargo build --target $(target)
-
-build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
-	@mkdir -p $(shell dirname $@)
-	@nasm -felf64 $< -o $@
+	-rm -rf build
+	-$(CARGO) clean
+.PHONY: clean

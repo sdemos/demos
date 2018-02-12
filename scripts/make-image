@@ -1,0 +1,13 @@
+#!/bin/bash -ex
+
+if [[ -z "$1" ]]; then
+   echo "usage: $0 <image name>"
+   exit 1
+fi
+
+qemu-img create $1 128M
+parted $1 mklabel gpt
+parted -- $1 mkpart boot fat32 1mib -1mib
+LODEV=$(losetup -o 1048576 -f $1 --show)
+mkfs.fat -F 32 $LODEV
+losetup -d $LODEV

@@ -1,0 +1,18 @@
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "--emit=obj",
+    "-C", "relocation-model=pic",
+    "-C", "link-arg=-Wl,-T/usr/lib/elf_x86_64_efi.lds",
+    "-C", "link-arg=-Wl,-z,nocombreloc",
+    "-C", "link-arg=-Wl,/usr/lib/crt0-efi-x86_64.o",
+    "-C", "link-arg=-Wl,-Bsymbolic",
+    "-C", "link-arg=-Wl,-pie",
+    "-C", "link-arg=-Wl,-lefi",
+    "-C", "link-arg=-Wl,-eefi_entry",
+    "-C", "link-arg=-Wl,-L/usr/lib",
+    "-C", "link-arg=-nostartfiles",
+    "-C", "link-arg=-Wl,-N",
+]
+
+[build]
+incremental = false

@@ -24,6 +24,7 @@ extern crate multiboot2;
 extern crate once;
 extern crate rlibc;
 extern crate spin;
+extern crate uefi;
 extern crate volatile;
 extern crate x86_64;
 
@@ -39,12 +40,32 @@ mod vga;
 pub use constants::*;
 
 use memory::heap_allocator::BumpAllocator;
+use uefi::*;
 
 /// because of rust-lang/rust#44113 the global allocator must be defined in the
 /// root module.
 #[global_allocator]
 static ALLOCATOR: BumpAllocator =
     BumpAllocator::new(KERNEL_HEAP_OFFSET, KERNEL_HEAP_OFFSET + KERNEL_HEAP_SIZE);
+
+#[no_mangle]
+pub extern "win64" fn efi_entry(
+    image_handle: uefi::Handle,
+    system_table: *const uefi::SystemTable,
+) -> isize {
+    uefi::set_system_table(system_table).console().reset();
+    uefi::protocol::set_current_image(image_handle);
+    ::efi_main(image_handle) as isize
+}
+
+pub fn efi_main(_image_handle: Handle) -> Status {
+    let sys_table = uefi::get_system_table();
+    let cons = sys_table.console();
+
+    cons.write("hello world!");
+
+    return Status::Success;
+}
 
 /// rust_main is the rust entrypoint of our kernel. it is the function called by
 /// the assembly that handles the initial boot. at this point, it is expected
