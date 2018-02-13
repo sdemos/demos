@@ -12,22 +12,14 @@ debug: build/bootx64-debug.efi build/bootx64-debug-symbols.efi
 
 # run: CARGO_FLAG := --release
 run: CARGO_FLAG :=
-run: build/image.vmdk
-	vmplayer /home/demos/vmware/demos/demos.vmx
+run: build/image.img
+	qemu-system-x86_64 -bios firmware/ovmf.fd -drive format=raw,file=$<
 .PHONY: run
 
-build/image.vmdk: build/image.img build/bootx64-debug.efi
+build/image.img: build/bootx64-debug.efi
 	@mkdir -p build/mnt
-	sudo mount -o loop,offset=1048576 $< build/mnt
-	sudo mkdir -p build/mnt/efi/boot
-	sudo cp $(word 2,$^) build/mnt/efi/boot/bootx64.efi
-	sudo umount build/mnt
-	qemu-img convert $< -O vmdk $@
-
-build/image.img:
-	@mkdir -p build
-	sudo ./scripts/make-image $@
 	qemu-img create $@ 128M
+	sudo ./scripts/make-image $@ $<
 
 build/bootx64-%.efi: build/demos-uefi-%.so
 	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $< $@
