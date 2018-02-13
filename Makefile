@@ -27,6 +27,7 @@ build/image.vmdk: build/image.img build/bootx64-debug.efi
 build/image.img:
 	@mkdir -p build
 	sudo ./scripts/make-image $@
+	qemu-img create $@ 128M
 
 build/bootx64-%.efi: build/demos-uefi-%.so
 	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $< $@
