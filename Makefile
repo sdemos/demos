@@ -41,7 +41,7 @@ QFLAGS += -device ahci,id=ahci,multifunction=on
 QFLAGS += -drive if=none,format=raw,file=fat:rw:$(ESP_DIR),id=esp
 QFLAGS += -device ide-drive,bus=ahci.0,drive=esp
 # some debugging stuff I don't understand
-# QFLAGS += -debugcon file:demos.log -global isa-debugcon.iobase=0xE9
+QFLAGS += -debugcon file:demos.log -global isa-debugcon.iobase=0xE9
 # QFLAGS += -debugcon file:debug.log -global isa-debugcon.iobase=0x402
 # allow arbitrary flags to get plugged in
 QFLAGS += $(QEMU_FLAGS)
