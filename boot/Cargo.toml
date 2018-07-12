@@ -1,0 +1,13 @@
+[package]
+name = "demos-bootloader"
+version = "0.1.0"
+authors = ["Stephen Demos <stephen@demos.zone>"]
+
+[dependencies]
+uefi = { path = "../../uefi-rs" }
+uefi-services = { path = "../../uefi-rs/uefi-services" }
+
+[dependencies.log]
+version = "0.4"
+default-features = false
+features = ["max_level_trace", "release_max_level_info"]

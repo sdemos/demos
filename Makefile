@@ -1,15 +1,19 @@
 # basic information
-TARGET ?= x86_64-uefi.json
+BOOT_TARGET ?= x86_64-uefi
+KERNEL_TARGET ?= x86_64-demos
 
-# important locations
-# LIB_DIR ?= /usr/lib
-# EFI_DIR ?= $(LIB_DIR)
-BUILD_DIR = target/$(TARGET)/debug
-EFI_EXE ?= demos.efi
-BUILD_OUT = $(BUILD_DIR)/$(EFI_EXE)
-ESP_DIR = $(BUILD_DIR)/esp
+# build artifact locations
+BUILD_BOOT_DIR = target/$(BOOT_TARGET)/debug
+EFI_EXE ?= demos-bootloader.efi
+EFI_IN = $(BUILD_BOOT_DIR)/$(EFI_EXE)
+BUILD_KERNEL_DIR = target/$(KERNEL_TARGET)/debug
+KERNEL_IN = $(BUILD_KERNEL_DIR)/demos-kernel
+
+# output structure
+ESP_DIR = target/esp
 BOOT_DIR = $(ESP_DIR)/efi/boot
-BOOT_OUT = $(BOOT_DIR)/bootx64.efi
+EFI_OUT = $(BOOT_DIR)/bootx64.efi
+KERNEL_OUT = $(ESP_DIR)/kernel
 
 # binary names
 QEMU = qemu-system-x86_64
@@ -44,19 +48,22 @@ QFLAGS += -debugcon file:demos.log -global isa-debugcon.iobase=0xE9
 # allow arbitrary flags to get plugged in
 QFLAGS += $(QEMU_FLAGS)
 
-all: $(BUILD_OUT)
+all: boot kernel
 .PHONY: all
 
-$(BUILD_OUT):
-	$(CARGO) xbuild --target $(TARGET)
-# get around the fact that we depend on a lot of source files
-# xargo is smart enough to deal with it, don't let make in the mix
-.PHONY: $(BUILD_OUT)
+boot:
+	$(CARGO) xbuild --target $(BOOT_TARGET).json --package demos-bootloader
+.PHONY: boot
 
-run: $(BUILD_OUT)
+kernel:
+	$(CARGO) xbuild --target $(KERNEL_TARGET).json --package demos-kernel
+.PHONY: kernel
+
+run: boot kernel
 # copy the build artifact
 	mkdir -p $(BOOT_DIR)
-	cp $(BUILD_OUT) $(BOOT_OUT)
+	cp $(EFI_IN) $(EFI_OUT)
+	cp $(KERNEL_IN) $(KERNEL_OUT)
 # run qemu
 	$(QEMU) $(QFLAGS)
 .PHONY: run
