@@ -1,5 +1,5 @@
 # basic information
-TARGET ?= x86_64-uefi
+TARGET ?= x86_64-uefi.json
 
 # important locations
 # LIB_DIR ?= /usr/lib
@@ -13,9 +13,7 @@ BOOT_OUT = $(BOOT_DIR)/bootx64.efi
 
 # binary names
 QEMU = qemu-system-x86_64
-# force the rust target path, it seems to not pick up the one in the working
-# directory correctly
-XARGO = RUST_TARGET_PATH=$(shell pwd) xargo
+CARGO = cargo
 
 # ovmf firmware information
 FIRMWARE = firmware
@@ -50,7 +48,7 @@ all: $(BUILD_OUT)
 .PHONY: all
 
 $(BUILD_OUT):
-	$(XARGO) build --target $(TARGET)
+	$(CARGO) xbuild --target $(TARGET)
 # get around the fact that we depend on a lot of source files
 # xargo is smart enough to deal with it, don't let make in the mix
 .PHONY: $(BUILD_OUT)
@@ -64,5 +62,5 @@ run: $(BUILD_OUT)
 .PHONY: run
 
 clean:
-	$(XARGO) clean
+	$(CARGO) clean
 .PHONY: clean
