@@ -6,8 +6,14 @@ authors = ["Stephen Demos <stephen@demos.zone>"]
 [dependencies]
 uefi = { path = "../../uefi-rs" }
 uefi-services = { path = "../../uefi-rs/uefi-services" }
+uefi-utils = { path = "../../uefi-rs/uefi-utils" }
 
 [dependencies.log]
 version = "0.4"
 default-features = false
 features = ["max_level_trace", "release_max_level_info"]
+
+[dependencies.goblin]
+version = "0.0.16"
+default-features = false
+features = ["elf64", "elf32", "endian_fd"]
