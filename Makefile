@@ -29,7 +29,10 @@ QEMU_FLAGS ?=
 # disable machine defaults, we are in control
 QFLAGS = -nodefaults
 # use standard vga for graphics output
-QFLAGS += -vga std
+# QFLAGS += -vga std
+# just kidding. use a serial console for now.
+QFLAGS += -nographic
+QFLAGS += -serial stdio
 # use a modern machine, preferably with acceleration
 QFLAGS += -machine q35,accel=kvm:tcg
 # give us plenty of memory to work with (relatively...)
