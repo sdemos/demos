@@ -59,11 +59,18 @@ kernel:
 	$(CARGO) xbuild --target $(KERNEL_TARGET).json --package demos-kernel
 .PHONY: kernel
 
-run: boot kernel
+esp: boot kernel
 # copy the build artifact
 	mkdir -p $(BOOT_DIR)
 	cp $(EFI_IN) $(EFI_OUT)
 	cp $(KERNEL_IN) $(KERNEL_OUT)
+.PHONY: esp
+
+debug: esp
+	$(QEMU) -s -S $(QFLAGS)
+.PHONY: debug
+
+run: esp
 # run qemu
 	$(QEMU) $(QFLAGS)
 .PHONY: run
