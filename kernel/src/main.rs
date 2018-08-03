@@ -6,12 +6,25 @@
 #![no_main]
 
 extern crate spin;
+extern crate x86_64;
 
+mod serial;
 
 use core::panic::PanicInfo;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    unsafe {
+        // initialize serial output
+        serial::init();
+    }
+
+    let hello = "hello world";
+    let mut console = serial::COM1.lock();
+
+    for byte in hello.bytes() {
+        console.send(byte);
+    }
 
     // info!("Hello World!");
 
