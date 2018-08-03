@@ -75,11 +75,16 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     };
 
     let (key, descs) = bt.memory_map(buffer).expect("failed to get memory map");
+    // info!("map size, in bytes: {}", map_size);
+    // info!("pages required for the memory map: {}", buf_size);
     // info!("memory map key: {:?}", key);
     // info!("number of memory descriptors: {}", descs.len());
-    // for desc in descs {
-    //     info!("{:?}", desc);
-    // }
+    // info!("descriptors:");
+    for desc in descs {
+        // info!("{:?}", desc);
+        info!("start: {:#010x}\tpages: {}\ttype: {:?}",
+              desc.phys_start, desc.page_count, desc.ty);
+    }
 
     // exit boot services
     // info!("exiting boot services and starting the kernel");
@@ -95,6 +100,8 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
 
     // entry doesn't return!
     unreachable!();
+
+    // loop {}
 
     // shutdown the computer
     // let rt = st.runtime;
@@ -160,9 +167,9 @@ fn load_kernel() -> (extern "C" fn() -> !) {
     // going to remap itself when it sets up the virtual memory map anyway. we
     // just need to keep track of the address so we can pass it to the kernel so
     // it can actually do that.
-    info!("allocating memory for the kernel");
     let bt = uefi_services::system_table().boot;
     let buf_size = kernel_size / 4096;
+    info!("allocating {} pages for the kernel", buf_size);
     let pages = bt.allocate_pages(
         boot::AllocateType::AnyPages,
         boot::MemoryType::LoaderData,
@@ -182,12 +189,16 @@ fn load_kernel() -> (extern "C" fn() -> !) {
         panic!("bytes read: {}\nkernel size: {}", bytes_read, kernel_size);
     }
 
+    info!("kernel starts at: {:#010x}", pages);
+
     // okay next we use goblin to parse the elf headers of our kernel
     let kernel_elf = elf::Elf::parse(kernel)
         .expect("failed to parse kernel elf");
 
-    let entry_ptr = kernel_elf.header.e_entry;
-    info!("entry point: {}", entry_ptr);
+    let e_entry = kernel_elf.header.e_entry;
+    info!("kernel elf e_entry: {:#010x}", e_entry);
+    let entry_ptr = e_entry + pages as u64;
+    info!("entry point: {:#010x}", entry_ptr);
 
     // now turn this entry point into a callable function
     unsafe {
