@@ -37,3 +37,28 @@ no guarantees of recency.
 * Implement processes
 * have a userspace at all
 * UEFI booting to eliminate/drastically reduce assembly
+
+## Target Files
+
+Unfortunately, the JSON spec doesn't allow comments, and there isn't a way to
+define the target spec in rust unless you are the compiler, so I'm going to
+reproduce my target files here and describe (to the best of my ability) why each
+thing is set the way it is.
+
+First of all, all the target file fields are defined in the [librustc_target
+crate][1] in the compiler. There is a [set of required fields][2] and a [set of
+optional fields][3]. The required fields have [slightly different names][4] than
+their corresponding fields, while all the optional fields just replace the
+underscores with hyphens. That crate also has the target definitions for all the
+supported platforms, which are useful to peruse for examples, although they are
+defined directly in rust instead of using the json syntax.
+
+This project has two target files. One is for the UEFI bootloader, which was
+mostly just stolen from the [uefi-rs project][5]. That one is neat, but I didn't
+write it. The other is specifically for my kernel.
+
+[1]: https://github.com/rust-lang/rust/blob/7e031b0907e90fc083e4f1f7c6a7f62e98325a9a/src/librustc_target/spec/mod.rs
+[2]: https://github.com/rust-lang/rust/blob/7e031b0907e90fc083e4f1f7c6a7f62e98325a9a/src/librustc_target/spec/mod.rs#L388
+[3]: https://github.com/rust-lang/rust/blob/7e031b0907e90fc083e4f1f7c6a7f62e98325a9a/src/librustc_target/spec/mod.rs#L429
+[4]: https://github.com/rust-lang/rust/blob/7e031b0907e90fc083e4f1f7c6a7f62e98325a9a/src/librustc_target/spec/mod.rs#L783
+[5]: https://github.com/GabrielMajeri/uefi-rs/blob/0892f6674cd622ed30970a66c3f56b734cc49c8f/uefi-test-runner/x86_64-uefi.json
