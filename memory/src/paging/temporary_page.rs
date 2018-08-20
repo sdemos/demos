@@ -12,7 +12,7 @@
 
 use super::{Page, ActivePageTable, VirtualAddress};
 use super::table::{Table, Level1};
-use memory::{Frame, FrameAllocator};
+use {Frame, FrameAllocator};
 
 #[derive(Debug)]
 struct TinyAllocator([Option<Frame>; 3]);

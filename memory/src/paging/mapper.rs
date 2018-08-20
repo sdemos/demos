@@ -1,7 +1,7 @@
 //! mapper is the abstraction of a virtual to physical address map
 
 use core::ptr::Unique;
-use memory::{PAGE_SIZE, Frame, FrameAllocator};
+use {PAGE_SIZE, Frame, FrameAllocator};
 use super::{VirtualAddress, PhysicalAddress, Page, ENTRY_COUNT};
 use super::entry::*;
 use super::table::{self, Table, Level4};

@@ -1,7 +1,26 @@
 //! memory is a memory management abstraction layer
 
+#![feature(alloc)]
+#![feature(allocator_api)]
+#![feature(const_fn)]
+#![feature(ptr_internals)]
+#![feature(unique)]
+#![feature(unique_unchecked)]
+#![no_std]
+
+extern crate alloc;
+#[macro_use]
+extern crate bitflags;
+#[macro_use]
+extern crate log;
+extern crate multiboot2;
+#[macro_use]
+extern crate once;
+extern crate x86_64;
+
 mod area_frame_allocator;
 pub mod heap_allocator;
+pub mod map;
 mod paging;
 mod stack_allocator;
 
@@ -54,8 +73,8 @@ pub fn init(boot_info: &BootInformation) -> MemoryController {
 
     let mut active_table = paging::init(&mut frame_allocator, boot_info);
 
-    let heap_start_page = Page::containing_address(::KERNEL_HEAP_OFFSET);
-    let heap_end_page = Page::containing_address(::KERNEL_HEAP_OFFSET + ::KERNEL_HEAP_SIZE-1);
+    let heap_start_page = Page::containing_address(map::KERNEL_HEAP_OFFSET);
+    let heap_end_page = Page::containing_address(map::KERNEL_HEAP_OFFSET + map::KERNEL_HEAP_SIZE-1);
 
     for page in Page::range_inclusive(heap_start_page, heap_end_page) {
         active_table.map(page,

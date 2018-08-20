@@ -1,20 +1,16 @@
 [package]
-name = "demos-kernel"
+name = "demos-memory"
 version = "0.1.0"
 authors = ["Stephen Demos <stephen@demos.zone>"]
 
-[workspace]
-members = ["boot", "memory"]
-
 [dependencies]
-spin = "0.4"
-x86_64 = "0.2"
-demos-memory = { path = "memory" }
+# spin = "0.4"
+x86_64 = "0.1"
 # rlibc = "1.0"
 # volatile = "0.1"
-# multiboot2 = "0.3"
-# bitflags = "1.0"
-# once = "0.3"
+multiboot2 = "0.3"
+bitflags = "1.0"
+once = "0.3"
 # bit_field = "0.9"
 
 # [dependencies.lazy_static]

@@ -8,8 +8,9 @@ mod temporary_page;
 pub use self::entry::*;
 pub use self::mapper::Mapper;
 
+use map;
 use core::ops::{Add, Deref, DerefMut};
-use memory::{PAGE_SIZE, Frame, FrameAllocator};
+use {PAGE_SIZE, Frame, FrameAllocator};
 use multiboot2::BootInformation;
 use self::temporary_page::TemporaryPage;
 
@@ -36,7 +37,7 @@ pub fn init<A>(
 
     // make a temporary page in the kernel's temporary memory space
     let mut temporary_page = TemporaryPage::new(
-        Page::containing_address(::KERNEL_TEMP_OFFSET),
+        Page::containing_address(map::KERNEL_TEMP_OFFSET),
         allocator,
     );
 
@@ -71,13 +72,13 @@ pub fn init<A>(
             let start_frame = Frame::containing_address(section.start_address());
             let end_frame = Frame::containing_address(section.end_address() - 1);
             for frame in Frame::range_inclusive(start_frame, end_frame) {
-                mapper.identity_map_offset(::KERNEL_OFFSET, frame, flags, allocator);
+                mapper.identity_map_offset(map::KERNEL_OFFSET, frame, flags, allocator);
             }
         }
 
         // identity map the VGA text buffer
         let vga_buffer_frame = Frame::containing_address(0xb8000);
-        mapper.identity_map_offset(::KERNEL_OFFSET,
+        mapper.identity_map_offset(map::KERNEL_OFFSET,
                                    vga_buffer_frame,
                                    EntryFlags::WRITABLE,
                                    allocator);
@@ -86,7 +87,7 @@ pub fn init<A>(
         let multiboot_start = Frame::containing_address(boot_info.start_address());
         let multiboot_end = Frame::containing_address(boot_info.end_address() - 1);
         for frame in Frame::range_inclusive(multiboot_start, multiboot_end) {
-            mapper.identity_map_offset(::KERNEL_OFFSET,
+            mapper.identity_map_offset(map::KERNEL_OFFSET,
                                        frame,
                                        EntryFlags::PRESENT,
                                        allocator);

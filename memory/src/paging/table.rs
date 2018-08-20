@@ -2,9 +2,9 @@
 
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
-use memory::FrameAllocator;
-use memory::paging::entry::*;
-use memory::paging::ENTRY_COUNT;
+use FrameAllocator;
+use super::entry::*;
+use super::ENTRY_COUNT;
 
 pub trait TableLevel {}
 pub trait HierarchicalLevel: TableLevel {

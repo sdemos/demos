@@ -1,7 +1,7 @@
 //! stack allocator allocates new stacks
 
-use memory::paging::{self, Page, PageIter, ActivePageTable};
-use memory::{PAGE_SIZE, FrameAllocator};
+use paging::{self, Page, PageIter, ActivePageTable};
+use {PAGE_SIZE, FrameAllocator};
 
 #[derive(Debug)]
 pub struct StackAllocator {

@@ -1,6 +1,6 @@
 //! entry defines entries in the page table
 
-use memory::Frame;
+use Frame;
 use multiboot2::ElfSection;
 
 bitflags! {

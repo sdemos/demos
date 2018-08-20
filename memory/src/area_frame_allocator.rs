@@ -1,7 +1,7 @@
 //! area_frame_allocator implements a dead-simple frame allocator that just
 //! returns the next available frame starting from 0 and counting up.
 
-use memory::{Frame, FrameAllocator};
+use super::{Frame, FrameAllocator};
 use multiboot2::{MemoryAreaIter, MemoryArea};
 
 pub struct AreaFrameAllocator {
@@ -88,7 +88,7 @@ impl FrameAllocator for AreaFrameAllocator {
         }
     }
 
-    fn deallocate_frame(&mut self, frame: Frame) {
+    fn deallocate_frame(&mut self, _frame: Frame) {
         unimplemented!()
     }
 }

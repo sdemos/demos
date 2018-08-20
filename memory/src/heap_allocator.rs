@@ -2,7 +2,8 @@
 /// ignores freed memory. another name for it is a bump allocator. it's not very
 /// good.
 
-use alloc::heap::{Alloc, AllocErr, Layout};
+use alloc::alloc::{Alloc, AllocErr, Layout};
+use core::ptr::NonNull;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug)]
@@ -23,7 +24,7 @@ impl BumpAllocator {
 }
 
 unsafe impl<'a> Alloc for &'a BumpAllocator {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         loop {
             // load current state of the next field
             let current_next = self.next.load(Ordering::Relaxed);
@@ -38,15 +39,15 @@ unsafe impl<'a> Alloc for &'a BumpAllocator {
                 if next_now == current_next {
                     // next address was successfully updated allocation
                     // succeeded.
-                    return Ok(alloc_start as *mut u8);
+                    return Ok(NonNull::new_unchecked(alloc_start as *mut u8));
                 }
             } else {
-                return Err(AllocErr::Exhausted { request: layout });
+                return Err(AllocErr);
             }
         }
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&mut self, _ptr: NonNull<u8>, _layout: Layout) {
         // do nothing, leak memory
     }
 }
