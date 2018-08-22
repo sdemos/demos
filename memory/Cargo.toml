@@ -1,5 +1,5 @@
 [package]
-name = "demos-memory"
+name = "memory"
 version = "0.1.0"
 authors = ["Stephen Demos <stephen@demos.zone>"]
 

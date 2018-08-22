@@ -1,5 +1,5 @@
 [package]
-name = "demos-bootloader"
+name = "boot"
 version = "0.1.0"
 authors = ["Stephen Demos <stephen@demos.zone>"]
 

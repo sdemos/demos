@@ -4,10 +4,10 @@ KERNEL_TARGET ?= x86_64-demos
 
 # build artifact locations
 BUILD_BOOT_DIR = target/$(BOOT_TARGET)/debug
-EFI_EXE ?= demos-bootloader.efi
+EFI_EXE ?= boot.efi
 EFI_IN = $(BUILD_BOOT_DIR)/$(EFI_EXE)
 BUILD_KERNEL_DIR = target/$(KERNEL_TARGET)/debug
-KERNEL_IN = $(BUILD_KERNEL_DIR)/demos-kernel
+KERNEL_IN = $(BUILD_KERNEL_DIR)/kernel
 
 # output structure
 ESP_DIR = target/esp
@@ -55,11 +55,11 @@ all: boot kernel
 .PHONY: all
 
 boot:
-	$(CARGO) xbuild --target $(BOOT_TARGET).json --package demos-bootloader
+	$(CARGO) xbuild --target $(BOOT_TARGET).json --package boot
 .PHONY: boot
 
 kernel:
-	$(CARGO) xbuild --target $(KERNEL_TARGET).json --package demos-kernel
+	$(CARGO) xbuild --target $(KERNEL_TARGET).json --package kernel
 .PHONY: kernel
 
 esp: boot kernel

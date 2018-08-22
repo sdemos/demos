@@ -1,5 +1,5 @@
 [package]
-name = "demos-kernel"
+name = "kernel"
 version = "0.1.0"
 authors = ["Stephen Demos <stephen@demos.zone>"]
 
@@ -9,7 +9,7 @@ members = ["boot", "memory"]
 [dependencies]
 spin = "0.4"
 x86_64 = "0.2"
-demos-memory = { path = "memory" }
+memory = { path = "memory" }
 # rlibc = "1.0"
 # volatile = "0.1"
 # multiboot2 = "0.3"
