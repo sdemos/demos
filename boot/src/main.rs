@@ -24,8 +24,8 @@ use uefi_utils::proto::find_protocol;
 /// be compiled as a separate binary that exists at a known location on disk and
 /// gets loaded into memory by this function. It has to be separate because it
 /// will have a different global allocator, a different executable format, a
-/// different logger we want to write our own implementation of panic, oom, and
-/// eh_personality.
+/// different logger, and we want to write our own implementation of panic, oom,
+/// and eh_personality.
 #[no_mangle]
 pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) -> Status {
     // initialize uefi_services. this sets up logging and allocation and
@@ -44,19 +44,6 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     info!("# DemOS #");
     info!("Image handle: {:?}", handle);
 
-    // this is essentially going to be a uefi os bootloader. it shouldn't be too
-    // complicated. all it has to do is load the kernel into memory, collect any
-    // information the kernel needs to run, then call the kernel with that
-    // information.
-    //
-    // first, we need to load the kernel from disk into memory, using one of the
-    // uefi functions for reading files from disk. then we need to somehow
-    // obtain a reference to that memory with the type &[u8] that we can pass to
-    // goblin. goblin will then parse the elf headers of our kernel. we take the
-    // e_entry from the elf headers and convert that to a function that we can
-    // call as the entry point to our kernel. then we can collect the rest of
-    // the information, which for now mostly means retrieving the memory map,
-    // then call exit boot services and invoke our discovered `_start` function.
     let entry = load_kernel();
 
     info!("Grabbing the memory map");
@@ -76,19 +63,9 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     };
 
     let (key, descs) = bt.memory_map(buffer).expect("failed to get memory map");
-    info!("map size, in bytes: {}", map_size);
-    info!("pages required for the memory map: {}", buf_size);
-    info!("memory map key: {:?}", key);
-    info!("number of memory descriptors: {}", descs.len());
-    info!("descriptors:");
-    let mut num_pages = 0;
-    for desc in descs {
-        // info!("{:?}", desc);
-        info!("start: {:#010x}\tpages: {}\ttype: {:?}",
-              desc.phys_start, desc.page_count, desc.ty);
-        num_pages += desc.page_count;
-    }
-    info!("total number of pages: {}", num_pages);
+    // in my experience, using logging functions changes the memory map key,
+    // once we get the memory map, we don't log anymore. either way, once we
+    // exit boot services, we can't use the uefi logging functionality anyway.
 
     // exit boot services
     // info!("exiting boot services and starting the kernel");
@@ -99,8 +76,6 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     // TODO: check the return and possibly attempt to exit again, perhaps after
     // retrieving an updated memory map again.
 
-    // okay, we are in control of the memory map now. we need to move the kernel
-    // to the place in virtual memory where it expects to be executed.
     remap_kernel();
 
     // start the kernel
@@ -109,11 +84,6 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     // entry doesn't return!
     // unreachable!();
 
-    // loop {}
-
-    // shutdown the computer
-    // let rt = st.runtime;
-    // rt.reset(table::runtime::ResetType::Shutdown, Status::Success, None);
 }
 
 fn load_kernel() -> (extern "C" fn() -> !) {
