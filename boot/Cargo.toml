@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Stephen Demos <stephen@demos.zone>"]
 
 [dependencies]
+memory = { path = "../memory" }
 uefi = { path = "../../uefi-rs" }
 uefi-services = { path = "../../uefi-rs/uefi-services" }
 uefi-utils = { path = "../../uefi-rs/uefi-utils" }

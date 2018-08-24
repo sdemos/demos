@@ -6,6 +6,7 @@
 extern crate goblin;
 #[macro_use]
 extern crate log;
+extern crate memory;
 extern crate uefi;
 extern crate uefi_services;
 extern crate uefi_utils;
@@ -75,16 +76,19 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     };
 
     let (key, descs) = bt.memory_map(buffer).expect("failed to get memory map");
-    // info!("map size, in bytes: {}", map_size);
-    // info!("pages required for the memory map: {}", buf_size);
-    // info!("memory map key: {:?}", key);
-    // info!("number of memory descriptors: {}", descs.len());
-    // info!("descriptors:");
+    info!("map size, in bytes: {}", map_size);
+    info!("pages required for the memory map: {}", buf_size);
+    info!("memory map key: {:?}", key);
+    info!("number of memory descriptors: {}", descs.len());
+    info!("descriptors:");
+    let mut num_pages = 0;
     for desc in descs {
         // info!("{:?}", desc);
         info!("start: {:#010x}\tpages: {}\ttype: {:?}",
               desc.phys_start, desc.page_count, desc.ty);
+        num_pages += desc.page_count;
     }
+    info!("total number of pages: {}", num_pages);
 
     // exit boot services
     // info!("exiting boot services and starting the kernel");
@@ -95,11 +99,15 @@ pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) ->
     // TODO: check the return and possibly attempt to exit again, perhaps after
     // retrieving an updated memory map again.
 
+    // okay, we are in control of the memory map now. we need to move the kernel
+    // to the place in virtual memory where it expects to be executed.
+    remap_kernel();
+
     // start the kernel
     entry();
 
     // entry doesn't return!
-    unreachable!();
+    // unreachable!();
 
     // loop {}
 
@@ -202,4 +210,40 @@ fn load_kernel() -> (extern "C" fn() -> !) {
     unsafe {
         core::mem::transmute::<u64, extern "C" fn() -> !>(entry_ptr)
     }
+}
+
+fn remap_kernel() {
+    // uefi dumps us into long mode, so paging is already enabled. it identity
+    // maps everything we care about, so the table we have right now isn't
+    // particularly useful, but it's a start.
+    //
+    // the function we created when we loaded the kernel uses the e_entry field
+    // of the elf headers. this field, when the object file is created by the
+    // linker, is filled with a value under the assumption that the binary will
+    // be loaded in a known location. we can (and do) control that location
+    // through the linker script.
+    //
+    // importantly, this known address is _not_ a valid physical address. it's
+    // much to large for that. instead, we tell the linker that our kernel
+    // expects to be loaded into a really high page in memory. we use the second
+    // to last entry in the pml4 table for our kernel.
+    //
+    // what this means for the bootloader is that we need to massage the page
+    // tables to reflect this without mapping ourselves to a different place (so
+    // we can continue to execute). we take advantage of the natural break
+    // between the bootloader and the kernel to do this without much fuss. we
+    // keep ourselves (and all the other stuff the firmware gave us with
+    // get_memory_map) identity mapped, but map the kernel's physical location
+    // to that place in high memory where we want it, swap in our new page
+    // tables, and then call the entry function. once the kernel is running, we
+    // will clean up memory there.
+    //
+    // some temporary things about this implementation - we are currently only
+    // interested in getting the kernel called, so right now the kernel isn't
+    // getting the information it needs. eventually, I will need to figure out
+    // how to send it the information it craves, such as where it is in physical
+    // memory, it's size, and the whole uefi memory map, so it can make informed
+    // decisions.
+
+    // to use our regular paging functionality, we need an allocator.
 }
