@@ -195,10 +195,8 @@ fn load_kernel() -> (extern "C" fn() -> !) {
     let kernel_elf = elf::Elf::parse(kernel)
         .expect("failed to parse kernel elf");
 
-    let e_entry = kernel_elf.header.e_entry;
-    info!("kernel elf e_entry: {:#010x}", e_entry);
-    let entry_ptr = e_entry + pages as u64;
-    info!("entry point: {:#010x}", entry_ptr);
+    let entry_ptr = kernel_elf.header.e_entry;
+    info!("kernel elf e_entry: {:#010x}", entry_ptr);
 
     // now turn this entry point into a callable function
     unsafe {
