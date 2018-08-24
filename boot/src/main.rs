@@ -12,10 +12,12 @@ extern crate uefi_services;
 extern crate uefi_utils;
 
 use core::{mem, slice};
+mod efi;
 
 use goblin::elf;
 use uefi::{Handle, Status, table, table::boot, proto::media};
 use uefi_utils::proto::find_protocol;
+use efi::Efi;
 
 /// uefi_start is the entrypoint called by the uefi firmware. It is defined as
 /// the entrypoint as part of the target spec. It is responsible for setting up
@@ -27,54 +29,28 @@ use uefi_utils::proto::find_protocol;
 /// different logger, and we want to write our own implementation of panic, oom,
 /// and eh_personality.
 #[no_mangle]
-pub extern "C" fn uefi_start(handle: Handle, st: &'static table::SystemTable) -> Status {
-    // initialize uefi_services. this sets up logging and allocation and
-    // initializes a globally accessible reference to the system table.
-    uefi_services::init(st);
+pub extern "C" fn uefi_start(
+    handle: Handle,
+    st: &'static table::SystemTable,
+) -> Status {
+    // initialize our runtime environment
+    let efi = Efi::init(handle, st);
 
-    // get the handle to stdout, and reset it
-    let stdout = st.stdout();
-    stdout.reset(false).unwrap();
-
-    // Switch to the maximum supported graphics mode.
-    let best_mode = stdout.modes().last().unwrap();
-    stdout.set_mode(best_mode).unwrap();
-
-    // try printing something!
+    // welcome! to the bootloader
     info!("# DemOS #");
     info!("Image handle: {:?}", handle);
 
     let entry = load_kernel();
 
-    info!("Grabbing the memory map");
-    let bt = st.boot;
-    let map_size = bt.memory_map_size();
-    // in case allocating our buffer requires an additional page, we allocate
-    // more space than we need.
-    let buf_size = (map_size / 4096) + 1;
-    let pages = bt.allocate_pages(
-        boot::AllocateType::AnyPages,
-        boot::MemoryType::LoaderData,
-        buf_size,
-    ).expect("failed to allocate memory for memory map");
-    let buffer = unsafe {
-        let ptr = mem::transmute::<_, *mut u8>(pages);
-        slice::from_raw_parts_mut(ptr, buf_size * 4096)
-    };
+    // grab the memory map from the firmware
+    let (key, desc) = efi.get_memory_map();
 
-    let (key, descs) = bt.memory_map(buffer).expect("failed to get memory map");
     // in my experience, using logging functions changes the memory map key,
     // once we get the memory map, we don't log anymore. either way, once we
     // exit boot services, we can't use the uefi logging functionality anyway.
 
-    // exit boot services
-    // info!("exiting boot services and starting the kernel");
-    unsafe {
-        bt.exit_boot_services(handle, key)
-            .expect("failed to exit boot services");
-    }
-    // TODO: check the return and possibly attempt to exit again, perhaps after
-    // retrieving an updated memory map again.
+    // exit boot services.
+    efi.exit_boot_services(key);
 
     remap_kernel();
 
